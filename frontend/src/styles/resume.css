@@ -10,11 +10,49 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
     padding: 16px 24px;
     margin-bottom: 32px;
     max-width: 900px;
     margin-left: auto;
     margin-right: auto;
+}
+
+.resume-toolbar-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.layout-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--border-light, #e5e7eb);
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.layout-toggle-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 14px;
+    background: transparent;
+    color: #475569;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.layout-toggle-button.active {
+    background: var(--primary);
+    color: white;
 }
 
 .btn-primary {
@@ -136,12 +174,176 @@
 .orange-theme h1, .orange-theme .section-title, .orange-theme .resume-title { color: var(--resume-orange); }
 .orange-theme .contact-info { color: var(--resume-orange); opacity: 0.8; }
 
-/* Theme: ATS Basic */
-.ats-basic-theme {
+/* Theme: Heritage */
+.heritage-theme,
+.daniel-blanco-theme {
+    padding: 20mm 20mm;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #333;
+    line-height: 1.4;
+}
+
+.heritage-theme h1,
+.daniel-blanco-theme h1 {
+    font-size: 32pt;
+    font-weight: 300;
+    text-align: center;
+    color: #333;
+    margin-bottom: 5px;
+    letter-spacing: 0;
+}
+
+.heritage-theme h1 b,
+.daniel-blanco-theme h1 b {
+    font-weight: 700;
+}
+
+.db-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.db-contact {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    font-size: 9.5pt;
+    color: #444;
+}
+
+.db-contact-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.db-links {
+    margin-top: 5px;
+}
+
+.db-section-title {
+    font-size: 14pt;
+    font-weight: 700;
+    color: #222;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 2px;
+}
+
+.db-summary {
+    font-size: 10pt;
+    margin-bottom: 15px;
+}
+
+/* Skills */
+.db-skills {
+    margin-bottom: 15px;
+}
+
+.db-skill-row {
+    display: flex;
+    font-size: 10pt;
+    margin-bottom: 3px;
+}
+
+.db-skill-category {
+    font-weight: 700;
+    width: 150px;
+    flex-shrink: 0;
+}
+
+.db-skill-items {
+    flex: 1;
+}
+
+/* Experience */
+.db-experience-list, .db-education-list, .db-projects-list {
+    margin-bottom: 15px;
+}
+
+.db-exp-item, .db-edu-item, .db-proj-item {
+    margin-bottom: 12px;
+}
+
+.db-exp-header, .db-proj-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.db-company, .db-proj-name {
+    font-size: 11pt;
+    font-weight: 700;
+    color: #222;
+}
+
+.db-location, .db-proj-tech {
+    font-size: 10pt;
+    font-style: italic;
+    color: #555;
+}
+
+.db-exp-subheader {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: 2px;
+    margin-bottom: 5px;
+}
+
+.db-role {
+    font-size: 10pt;
+    color: #444;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0;
+}
+
+.db-date {
+    font-size: 10pt;
+    font-style: italic;
+    color: #555;
+}
+
+.db-responsibilities {
+    padding-left: 18px;
+    margin: 0;
+}
+
+.db-responsibilities li {
+    font-size: 10pt;
+    margin-bottom: 3px;
+    color: #333;
+}
+
+/* Projects */
+.db-proj-desc {
+    font-size: 10pt;
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+.db-proj-link {
+    font-size: 9.5pt;
+    color: #555;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Theme: Professional */
+.professional-theme,
+.ats-basic-theme,
+.simple-ats-theme {
     padding: 30mm 25mm;
     font-family: Arial, Helvetica, sans-serif;
 }
-.ats-basic-theme h1 {
+
+.professional-theme h1,
+.ats-basic-theme h1,
+.simple-ats-theme h1 {
     font-family: Arial, sans-serif;
     text-align: center;
     font-size: 28pt;
@@ -149,7 +351,10 @@
     color: #000;
     margin-bottom: 20px;
 }
-.ats-basic-theme .section-title {
+
+.professional-theme .section-title,
+.ats-basic-theme .section-title,
+.simple-ats-theme .section-title {
     text-align: center;
     border-top: 1px solid #000;
     border-bottom: 1px solid #000;
@@ -158,7 +363,10 @@
     font-size: 14pt;
     color: #000;
 }
-.ats-basic-theme .contact-container {
+
+.professional-theme .contact-container,
+.ats-basic-theme .contact-container,
+.simple-ats-theme .contact-container {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -166,47 +374,125 @@
     margin-top: 15px;
     margin-bottom: 25px;
 }
-.ats-basic-theme .contact-info {
+
+.professional-theme .contact-info,
+.ats-basic-theme .contact-info,
+.simple-ats-theme .contact-info {
     color: #333;
     font-size: 10pt;
     margin-bottom: 0;
 }
-.ats-basic-theme .contact-info strong {
+
+.professional-theme .contact-info strong,
+.ats-basic-theme .contact-info strong,
+.simple-ats-theme .contact-info strong {
     color: #000;
 }
-.ats-basic-theme p, .ats-basic-theme li, .ats-basic-theme .exp-company, .ats-basic-theme .exp-date {
+
+.professional-theme p,
+.professional-theme li,
+.professional-theme .exp-company,
+.professional-theme .exp-date,
+.ats-basic-theme p,
+.ats-basic-theme li,
+.ats-basic-theme .exp-company,
+.ats-basic-theme .exp-date,
+.simple-ats-theme p,
+.simple-ats-theme li,
+.simple-ats-theme .exp-company,
+.simple-ats-theme .exp-date {
     font-size: 10pt;
     color: #333;
 }
-.ats-basic-theme .exp-header {
-    justify-content: flex-start;
-    flex-direction: column;
+
+.professional-summary {
+    margin-top: 15px;
+    margin-bottom: 25px;
 }
-.ats-basic-theme .exp-role {
+
+.professional-section-content {
+    margin-top: 15px;
+    margin-bottom: 25px;
+}
+
+.professional-row {
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 16px;
+}
+
+.professional-row .exp-date-loc {
+    width: 150px;
+    flex-shrink: 0;
+}
+
+.professional-row-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.professional-responsibilities {
+    margin-top: 5px;
+    list-style: none;
+    padding-left: 0;
+}
+
+.professional-responsibilities li {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 3px;
+}
+
+.professional-bullet {
+    flex: 0 0 auto;
+}
+
+.professional-theme .exp-role,
+.ats-basic-theme .exp-role,
+.simple-ats-theme .exp-role {
     font-size: 12pt;
     font-weight: bold;
     color: #000;
 }
-.ats-basic-theme .exp-company {
+
+.professional-theme .exp-company,
+.ats-basic-theme .exp-company,
+.simple-ats-theme .exp-company {
     font-weight: bold;
     font-style: normal;
     color: #000;
 }
-.ats-basic-theme .skills-grid {
+
+.professional-theme .skills-grid,
+.ats-basic-theme .skills-grid,
+.simple-ats-theme .skills-grid {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     gap: 20px;
     margin-top: 10px;
 }
-.ats-basic-theme .skill-category {
+
+.professional-theme .skill-category,
+.ats-basic-theme .skill-category,
+.simple-ats-theme .skill-category {
     font-size: 9pt;
     font-weight: bold;
     text-transform: uppercase;
     margin-bottom: 5px;
 }
-.ats-basic-theme .skill-item {
+
+.professional-theme .skill-item,
+.ats-basic-theme .skill-item,
+.simple-ats-theme .skill-item {
     font-size: 10pt;
     margin-bottom: 3px;
+}
+
+.skill-name {
+    display: inline-block;
+    width: 100px;
 }
 
 @media print {
@@ -226,9 +512,64 @@
     .resume-paper {
         box-shadow: none !important;
         margin: 0 !important;
-        padding: 15mm 20mm !important;
+        padding: 14mm 20mm 16mm !important;
         width: 100% !important;
+        height: auto !important;
         min-height: 0 !important;
+        overflow: visible !important;
+        -webkit-box-decoration-break: clone;
+        box-decoration-break: clone;
+    }
+
+    .resume-paper .section-title,
+    .db-section-title {
+        break-after: avoid;
+        break-after: avoid-page;
+        page-break-after: avoid;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .professional-summary,
+    .db-summary,
+    .skills-grid,
+    .db-skills,
+    .professional-row,
+    .db-exp-item,
+    .db-proj-item,
+    .db-edu-item,
+    .exp-item,
+    .edu-item,
+    .skills-grid > div,
+    .db-skill-row {
+        break-inside: avoid;
+        break-inside: avoid-page;
+        page-break-inside: avoid;
+    }
+
+    .professional-row {
+        display: grid !important;
+        grid-template-columns: 34mm 1fr;
+        column-gap: 8mm;
+        align-items: start;
+    }
+
+    .professional-row .exp-date-loc {
+        width: auto;
+    }
+
+    .professional-row-main,
+    .db-exp-header,
+    .db-exp-subheader,
+    .db-proj-header {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .resume-paper p,
+    .resume-paper li {
+        orphans: 3;
+        widows: 3;
     }
 
     @page {

@@ -1,80 +1,33 @@
-import React from 'react';
-import { BookOpen, User, FileText, Zap } from 'lucide-react';
+import { BookOpen, Zap } from 'lucide-react';
 
-export default function Sidebar({ activeView, setActiveView, activeResume, setActiveResume }) {
-  const handleArticleClick = () => {
-    setActiveView('article');
-  };
-
-  const handleAiClick = () => {
-    setActiveView('ai-generator');
-  };
-
-  const handleResumeClick = (id) => {
-    setActiveView('resume');
-    setActiveResume(id);
-  };
-
+export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="logo">
         <div className="logo-icon"></div>
         <h2>ATS Pro</h2>
       </div>
-      
+
+      <section className="ats-summary">
+        <div className="ats-summary-title">
+          <BookOpen size={16} />
+          <span>O que é ATS?</span>
+        </div>
+        <p>
+          ATS é o sistema que empresas usam para ler currículos, buscar palavras-chave e priorizar candidatos antes da triagem humana.
+        </p>
+      </section>
+
       <nav className="nav-menu">
         <div className="nav-section">
-          <span className="nav-title">Guia Definitivo</span>
-          <button 
-            className={`nav-item ${activeView === 'article' ? 'active' : ''}`} 
-            onClick={handleArticleClick}
-          >
-            <BookOpen size={18} />
-            O que é ATS?
-          </button>
-        </div>
-
-        <div className="nav-section">
-          <span className="nav-title">Inteligência Artificial</span>
-          <button 
-            className={`nav-item ${activeView === 'ai-generator' ? 'active' : ''}`} 
-            onClick={handleAiClick}
-          >
+          <span className="nav-title">Currículo</span>
+          <div className="nav-item active" aria-current="page">
             <Zap size={18} />
             Gerar Currículo ATS
-          </button>
-        </div>
-        
-        <div className="nav-section">
-          <span className="nav-title">Modelos Brasileiros</span>
-          <button 
-            className={`nav-item ${activeView === 'resume' && activeResume === 'paula' ? 'active' : ''}`}
-            onClick={() => handleResumeClick('paula')}
-          >
-            <User size={18} />
-            Paula Ferreira
-          </button>
-          <button 
-            className={`nav-item ${activeView === 'resume' && activeResume === 'joao' ? 'active' : ''}`}
-            onClick={() => handleResumeClick('joao')}
-          >
-            <User size={18} />
-            João Vieira
-          </button>
-        </div>
-
-        <div className="nav-section">
-          <span className="nav-title">Modelos Gringos (ATS)</span>
-          <button 
-            className={`nav-item ${activeView === 'resume' && activeResume === 'patrick_basic' ? 'active' : ''}`}
-            onClick={() => handleResumeClick('patrick_basic')}
-          >
-            <FileText size={18} />
-            Patrick Bateman (Basic)
-          </button>
+          </div>
         </div>
       </nav>
-      
+
       <div className="sidebar-footer">
         <p>Otimizado para Sistemas de Rastreamento.</p>
       </div>

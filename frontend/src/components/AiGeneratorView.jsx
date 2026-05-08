@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
 import { motion } from 'framer-motion';
-import { UploadCloud, FileText, ImageIcon, Zap } from 'lucide-react';
-import AtsBasicTheme from './themes/AtsBasicTheme';
-import { Download } from 'lucide-react';
+import { FileText, ImageIcon, Zap, Download, LayoutTemplate } from 'lucide-react';
+import ProfessionalTheme from './themes/AtsBasicTheme';
+import HeritageTheme from './themes/HeritageTheme';
+import { RESUME_LAYOUTS, normalizeGeneratedResumes } from '../lib/resumePayload';
 import '../styles/resume.css';
 
 export default function AiGeneratorView() {
   const [resumeFile, setResumeFile] = useState(null);
   const [jobDescFile, setJobDescFile] = useState(null);
   const [jobDescText, setJobDescText] = useState('');
+  const [selectedLayout, setSelectedLayout] = useState('professional');
 
   // Dropzone for Resume PDF/DOCX
   const { getRootProps: getResumeProps, getInputProps: getResumeInput } = useDropzone({
@@ -58,7 +60,9 @@ export default function AiGeneratorView() {
     mutation.mutate();
   };
 
-  const generatedData = mutation.data?.data;
+  const generatedResumes = normalizeGeneratedResumes(mutation.data?.data);
+  const generatedData = generatedResumes.professional;
+  const selectedResume = generatedResumes[selectedLayout] ?? generatedResumes.professional;
 
   return (
     <section className="view-section active">
@@ -138,11 +142,24 @@ export default function AiGeneratorView() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="resume-toolbar glass-panel">
             <div className="resume-info">
-              <h3>Sucesso! 🎉</h3>
-              <p>Seu currículo foi reescrito focado nesta vaga.</p>
+              <h3>Sucesso!</h3>
+              <p>Foram gerados 2 modelos otimizados para sua vaga.</p>
             </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="btn-secondary" onClick={() => mutation.reset()}>
+            <div className="resume-toolbar-actions">
+              <div className="layout-toggle" role="group" aria-label="Escolha o modelo do currículo">
+                {Object.entries(RESUME_LAYOUTS).map(([layout, config]) => (
+                  <button
+                    key={layout}
+                    type="button"
+                    className={`layout-toggle-button ${selectedLayout === layout ? 'active' : ''}`}
+                    aria-pressed={selectedLayout === layout}
+                    onClick={() => setSelectedLayout(layout)}
+                  >
+                    <LayoutTemplate size={16} /> {config.label}
+                  </button>
+                ))}
+              </div>
+              <button className="btn-secondary" onClick={() => { mutation.reset(); setSelectedLayout('professional'); }}>
                 Fazer Outro
               </button>
               <button className="btn-primary" onClick={() => window.print()}>
@@ -152,8 +169,12 @@ export default function AiGeneratorView() {
             </div>
           </div>
           <div className="resume-paper-container">
-            <div className={`resume-paper ats-basic-theme`}>
-              <AtsBasicTheme data={generatedData} />
+            <div className={`resume-paper ${RESUME_LAYOUTS[selectedLayout].className}`}>
+              {selectedLayout === 'heritage' ? (
+                <HeritageTheme data={selectedResume} />
+              ) : (
+                <ProfessionalTheme data={selectedResume} />
+              )}
             </div>
           </div>
         </motion.div>
