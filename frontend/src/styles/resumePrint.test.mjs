@@ -8,11 +8,16 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(currentDir, 'resume.css'), 'utf8');
 const printCss = css.match(/@media print\s*\{[\s\S]*$/)?.[0] ?? '';
 
-test('print styles keep resume items from splitting across pages', () => {
-  for (const selector of ['.professional-row', '.db-exp-item', '.db-proj-item', '.db-edu-item']) {
+test('print styles keep compact resume sections from splitting across pages', () => {
+  for (const selector of ['.db-proj-item', '.db-edu-item', '.skills-grid > div', '.db-skill-row']) {
     assert.match(printCss, new RegExp(`${selector.replace('.', '\\.')}[\\s\\S]*break-inside:\\s*avoid-page`));
     assert.match(printCss, new RegExp(`${selector.replace('.', '\\.')}[\\s\\S]*page-break-inside:\\s*avoid`));
   }
+});
+
+test('print styles allow long experience entries to split instead of leaving large blank gaps', () => {
+  assert.match(printCss, /\.professional-row,[\s\S]*\.db-exp-item,[\s\S]*break-inside:\s*auto/);
+  assert.match(printCss, /\.professional-row,[\s\S]*\.db-exp-item,[\s\S]*page-break-inside:\s*auto/);
 });
 
 test('print styles keep section titles with following content', () => {

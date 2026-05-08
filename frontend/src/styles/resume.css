@@ -532,10 +532,6 @@
 
     .professional-summary,
     .db-summary,
-    .skills-grid,
-    .db-skills,
-    .professional-row,
-    .db-exp-item,
     .db-proj-item,
     .db-edu-item,
     .exp-item,
@@ -545,6 +541,14 @@
         break-inside: avoid;
         break-inside: avoid-page;
         page-break-inside: avoid;
+    }
+
+    .professional-row,
+    .db-exp-item,
+    .skills-grid,
+    .db-skills {
+        break-inside: auto;
+        page-break-inside: auto;
     }
 
     .professional-row {
