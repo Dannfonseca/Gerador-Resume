@@ -17,6 +17,8 @@ if (!DEFAULT_GEMINI_API_KEY) {
 
 function getGenAI(requestKey?: string | null) {
   const key = requestKey || DEFAULT_GEMINI_API_KEY;
+  if (!key) console.error("❌ Erro: Nenhuma GEMINI_API_KEY encontrada!");
+  else console.log("✅ Usando GEMINI_API_KEY (iniciada com: " + key.substring(0, 4) + "...)");
   return new GoogleGenerativeAI(key);
 }
 
@@ -167,16 +169,21 @@ const app = new Elysia()
       if (!resumeText) return { error: "Currículo inválido." };
 
       const runGemini = async () => {
-        const model = getGenAI(requestGeminiKey).getGenerativeModel({ model: "gemini-1.5-flash", generationConfig: { temperature: 0 } });
+        const model = getGenAI(requestGeminiKey).getGenerativeModel({ 
+          model: "gemini-1.5-flash", 
+          generationConfig: { 
+            temperature: 0.1,
+            responseMimeType: "application/json"
+          } 
+        });
         const contents: any[] = [];
         if (jobDescriptionFile && jobDescriptionFile.type.startsWith('image/')) {
           contents.push({ inlineData: { data: Buffer.from(await jobDescriptionFile.arrayBuffer()).toString("base64"), mimeType: jobDescriptionFile.type } });
         }
         contents.push(`${ANALYSIS_SYSTEM_PROMPT}\n\nCURRÍCULO:\n${resumeText}\n\nVAGA:\n${jobDescriptionText || "Não fornecida"}`);
         const result = await model.generateContent(contents);
-        const text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        return JSON.parse(jsonMatch ? jsonMatch[0] : text);
+        const text = result.response.text().trim();
+        return JSON.parse(text);
       };
 
       const runOpenAI = async () => {
@@ -188,7 +195,14 @@ const app = new Elysia()
 
       const analysis = await withFallback(runGemini, runOpenAI, !!requestOpenaiKey);
       return { success: true, data: AnalysisResponseSchema.parse(analysis) };
-    } catch (e) { console.error(e); set.status = 500; return { error: "Erro na análise." }; }
+    } catch (e: any) { 
+      console.error("💥 ERRO CRÍTICO NA ANÁLISE:", e);
+      set.status = 500; 
+      return { 
+        error: "Erro interno no servidor durante a análise.",
+        details: e.message || "Erro desconhecido"
+      }; 
+    }
   }, { body: t.Object({ resume: t.File(), jobDescriptionText: t.Optional(t.String()), jobDescriptionFile: t.Optional(t.File()) }) })
 
   .post("/api/suggest-keywords", async ({ body, set, headers }) => {
