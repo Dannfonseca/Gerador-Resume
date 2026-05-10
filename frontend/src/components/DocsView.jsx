@@ -31,7 +31,13 @@ export default function DocsView({ onBack }) {
           <p>Antes de começar, você precisa ter instalado:</p>
           <ul style={{ paddingLeft: '20px', marginTop: '10px', lineHeight: '1.8' }}>
             <li><strong>Node.js (v18+)</strong>: O motor que roda o JavaScript.</li>
-            <li><strong>Bun</strong>: Um runtime ultra-rápido usado no Backend (opcional, mas recomendado).</li>
+            <li>
+              <strong><a href="https://bun.sh" target="_blank" rel="noreferrer" style={{ color: 'var(--tertiary)', textDecoration: 'underline' }}>Bun</a></strong>: 
+              Um runtime ultra-rápido usado no Backend. 
+              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>
+                Instale no Windows via Terminal: <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>powershell -c "irm bun.sh/install.ps1 | iex"</code>
+              </div>
+            </li>
             <li><strong>Editor de Código</strong>: Recomendamos o VS Code.</li>
           </ul>
         </section>
