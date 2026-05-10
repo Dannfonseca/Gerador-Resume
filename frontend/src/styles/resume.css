@@ -8,15 +8,24 @@
 
 .resume-toolbar {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
     gap: 16px;
-    padding: 16px 24px;
-    margin-bottom: 32px;
+    padding: 16px;
+    margin-bottom: 24px;
     max-width: 900px;
     margin-left: auto;
     margin-right: auto;
+}
+
+@media (min-width: 1024px) {
+    .resume-toolbar {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 24px;
+        margin-bottom: 32px;
+    }
 }
 
 .resume-toolbar-actions {
@@ -77,21 +86,40 @@
 
 .resume-paper-container {
     display: flex;
-    justify-content: center;
-    padding-bottom: 60px;
+    justify-content: flex-start;
+    padding-bottom: 40px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 16px 40px;
+}
+
+@media (min-width: 1024px) {
+    .resume-paper-container {
+        justify-content: center;
+        padding: 0 0 60px;
+    }
 }
 
 .resume-paper {
     background: white;
     width: 210mm;
     min-height: 297mm;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-    padding: 20mm 20mm;
-    border-radius: 4px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    padding: 15mm 10mm;
+    border-radius: 0;
     color: var(--resume-text);
     position: relative;
     overflow: hidden;
     text-align: left;
+    flex-shrink: 0;
+}
+
+@media (min-width: 1024px) {
+    .resume-paper {
+        padding: 20mm 20mm;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        border-radius: 4px;
+    }
 }
 
 /* Base Styles inside resume */
@@ -467,9 +495,17 @@
 }
 
 .analysis-scores-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+@media (min-width: 768px) {
+    .analysis-scores-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
 }
 
 .analysis-score-card {
@@ -551,9 +587,17 @@
 }
 
 .keywords-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+@media (min-width: 768px) {
+    .keywords-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
 }
 
 .keywords-column h4 {
@@ -666,9 +710,16 @@
 }
 
 .level-cards {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    display: flex;
+    flex-direction: column;
     gap: 16px;
+}
+
+@media (min-width: 768px) {
+    .level-cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 .level-card {
@@ -735,12 +786,21 @@
 /* ====== COVER LETTER PANEL ====== */
 .cover-letter-cta {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
     gap: 24px;
-    padding: 28px;
+    padding: 24px 16px;
     border: 1px solid var(--secondary);
     background: var(--neutral);
+}
+
+@media (min-width: 768px) {
+    .cover-letter-cta {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 28px;
+    }
 }
 
 .cover-letter-cta-content {
@@ -933,11 +993,20 @@
 
 .score-comparison-row {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
     padding: 12px 16px;
     background: rgba(26, 28, 30, 0.02);
     border: 1px solid var(--border-light);
+}
+
+@media (min-width: 600px) {
+    .score-comparison-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
 }
 
 .score-comparison-label {
