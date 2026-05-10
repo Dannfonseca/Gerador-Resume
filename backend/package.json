@@ -11,7 +11,8 @@
     "@google/generative-ai": "^0.24.1",
     "elysia": "latest",
     "mammoth": "^1.12.0",
-    "pdf-parse": "^2.4.5"
+    "pdf-parse": "^2.4.5",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "bun-types": "latest"

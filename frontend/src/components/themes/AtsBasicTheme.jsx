@@ -1,7 +1,30 @@
 import { hasItems } from '../../lib/resumePayload';
+import ReactMarkdown from 'react-markdown';
+import React from 'react';
 
-export default function ProfessionalTheme({ data }) {
+export default function ProfessionalTheme({ data, onEdit }) {
   const isPt = data?.language === 'pt-BR' || data?.language === 'pt';
+
+  const E = ({ path, value, as: Tag = 'span', className = '', markdown = false }) => {
+    if (!value) return null;
+    const content = markdown ? (
+      <ReactMarkdown components={{ p: Tag === 'span' ? 'span' : React.Fragment }}>{value}</ReactMarkdown>
+    ) : value;
+
+    if (!onEdit) {
+      return Tag === 'span' && !className ? <>{content}</> : <Tag className={className}>{content}</Tag>;
+    }
+
+    return (
+      <Tag 
+        className={`${className} editable-field`} 
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(path, value); }}
+        title="Clique para editar"
+      >
+        {content}
+      </Tag>
+    );
+  };
 
   const t = {
     personal: isPt ? 'Informações Pessoais' : 'Personal Information',
@@ -25,23 +48,23 @@ export default function ProfessionalTheme({ data }) {
 
   return (
     <>
-      <h1>{data?.name}</h1>
+      <E as="h1" path="name" value={data?.name} />
 
       <div className="section-title">{t.personal}</div>
       <div className="contact-container">
         {data?.address && (
           <div className="contact-info">
-            <strong>{t.address}</strong> {data.address}
+            <strong>{t.address}</strong> <E path="address" value={data.address} />
           </div>
         )}
         {data?.phone && (
           <div className="contact-info">
-            <strong>{t.phone}</strong> {data.phone}
+            <strong>{t.phone}</strong> <E path="phone" value={data.phone} />
           </div>
         )}
         {data?.email && (
           <div className="contact-info">
-            <strong>{t.email}</strong> {data.email}
+            <strong>{t.email}</strong> <E path="email" value={data.email} />
           </div>
         )}
       </div>
@@ -49,7 +72,7 @@ export default function ProfessionalTheme({ data }) {
       {data?.summary && (
         <>
           <div className="section-title">{t.summary}</div>
-          <p className="professional-summary">{data.summary}</p>
+          <E as="div" className="professional-summary" path="summary" value={data.summary} markdown />
         </>
       )}
 
@@ -60,12 +83,12 @@ export default function ProfessionalTheme({ data }) {
             {education.map((edu, idx) => (
               <div key={`${edu.degree}-${idx}`} className="professional-row">
                 <div className="exp-date-loc">
-                  <div className="exp-date">{edu.date}</div>
-                  <div className="exp-date">{edu.location}</div>
+                  <E as="div" className="exp-date" path={`education.${idx}.date`} value={edu.date} />
+                  <E as="div" className="exp-date" path={`education.${idx}.location`} value={edu.location} />
                 </div>
                 <div className="professional-row-main">
-                  <div className="exp-role">{edu.degree}</div>
-                  <div className="exp-company">{edu.institution}</div>
+                  <E as="div" className="exp-role" path={`education.${idx}.degree`} value={edu.degree} />
+                  <E as="div" className="exp-company" path={`education.${idx}.institution`} value={edu.institution} />
                 </div>
               </div>
             ))}
@@ -80,18 +103,18 @@ export default function ProfessionalTheme({ data }) {
             {experience.map((exp, idx) => (
               <div key={`${exp.role}-${idx}`} className="professional-row">
                 <div className="exp-date-loc">
-                  <div className="exp-date">{exp.date}</div>
-                  <div className="exp-date">{exp.location}</div>
+                  <E as="div" className="exp-date" path={`experience.${idx}.date`} value={exp.date} />
+                  <E as="div" className="exp-date" path={`experience.${idx}.location`} value={exp.location} />
                 </div>
                 <div className="professional-row-main">
-                  <div className="exp-role">{exp.role}</div>
-                  <div className="exp-company">{exp.company}</div>
+                  <E as="div" className="exp-role" path={`experience.${idx}.role`} value={exp.role} />
+                  <E as="div" className="exp-company" path={`experience.${idx}.company`} value={exp.company} />
                   {hasItems(exp.responsibilities) && (
                     <ul className="professional-responsibilities">
                       {exp.responsibilities.map((item, itemIdx) => (
                         <li key={`${item}-${itemIdx}`}>
                           <span className="professional-bullet">•</span>
-                          {item}
+                          <E as="span" path={`experience.${idx}.responsibilities.${itemIdx}`} value={item} markdown />
                         </li>
                       ))}
                     </ul>
