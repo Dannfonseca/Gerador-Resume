@@ -30,7 +30,12 @@ export default function DocsView({ onBack }) {
           </h3>
           <p>Antes de começar, você precisa ter instalado:</p>
           <ul style={{ paddingLeft: '20px', marginTop: '10px', lineHeight: '1.8' }}>
-            <li><strong>Node.js (v18+)</strong>: O motor que roda o JavaScript.</li>
+            <li>
+              <strong><a href="https://nodejs.org" target="_blank" rel="noreferrer" style={{ color: 'var(--tertiary)', textDecoration: 'underline' }}>Node.js (v18+)</a></strong>: O motor que roda o JavaScript.
+              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>
+                Instale no Windows via Terminal: <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>winget install OpenJS.NodeJS</code>
+              </div>
+            </li>
             <li>
               <strong><a href="https://bun.sh" target="_blank" rel="noreferrer" style={{ color: 'var(--tertiary)', textDecoration: 'underline' }}>Bun</a></strong>: 
               Um runtime ultra-rápido usado no Backend. 
@@ -38,7 +43,12 @@ export default function DocsView({ onBack }) {
                 Instale no Windows via Terminal: <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>powershell -c "irm bun.sh/install.ps1 | iex"</code>
               </div>
             </li>
-            <li><strong>Editor de Código</strong>: Recomendamos o VS Code.</li>
+            <li>
+              <strong><a href="https://code.visualstudio.com/" target="_blank" rel="noreferrer" style={{ color: 'var(--tertiary)', textDecoration: 'underline' }}>VS Code</a></strong>: Editor de código recomendado.
+            </li>
+            <li>
+              <strong><a href="https://antigravity.dev" target="_blank" rel="noreferrer" style={{ color: 'var(--tertiary)', textDecoration: 'underline' }}>Antigravity</a></strong>: Extensão de IA para codificação avançada.
+            </li>
           </ul>
         </section>
 

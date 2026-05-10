@@ -34,9 +34,13 @@ Diferente de geradores de currículos convencionais, o ATS Pro utiliza um fluxo 
 ## Como Iniciar o Projeto
 
 ### 1. Requisitos
-*   **Bun**: Necessário para rodar o backend. 
+*   **[Node.js (v18+)](https://nodejs.org)**: Motor JavaScript.
+    *   *Windows*: `winget install OpenJS.NodeJS`
+*   **[Bun](https://bun.sh)**: Necessário para rodar o backend. 
     *   *Windows*: `powershell -c "irm bun.sh/install.ps1 | iex"`
     *   *Linux/macOS*: `curl -fsSL https://bun.sh/install | bash`
+*   **[VS Code](https://code.visualstudio.com/)**: Editor de código recomendado.
+*   **[Antigravity](https://antigravity.dev)**: A IA que construiu este projeto.
 *   **API Keys**: Google Gemini (Principal) e OpenAI (Fallback opcional).
 
 ### 2. Configuração
