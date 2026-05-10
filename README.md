@@ -25,22 +25,27 @@ Diferente de geradores de currículos convencionais, o ATS Pro utiliza um fluxo 
 
 ## Stack Tecnológica
 
-*   **Ambiente**: Bun
+*   **Ambiente**: [Bun](https://bun.sh) (Runtime ultra-rápido)
 *   **Backend**: ElysiaJS
 *   **Frontend**: React, Vite, Framer Motion
-*   **Inteligência Artificial**: Google Gemini 2.5 Flash
+*   **Inteligência Artificial**: Google Gemini & OpenAI (com sistema de fallback automático)
 *   **Processamento**: LaTeX Service, PDF-Parse, Mammoth
 
 ## Como Iniciar o Projeto
 
 ### 1. Requisitos
-*   Possuir o runtime Bun instalado em seu sistema.
-*   Uma chave de API válida do Google Gemini.
+*   **Bun**: Necessário para rodar o backend. 
+    *   *Windows*: `powershell -c "irm bun.sh/install.ps1 | iex"`
+    *   *Linux/macOS*: `curl -fsSL https://bun.sh/install | bash`
+*   **API Keys**: Google Gemini (Principal) e OpenAI (Fallback opcional).
 
 ### 2. Configuração
-Crie um arquivo nomeado `.env` dentro do diretório `backend/` com o seguinte conteúdo:
+Você pode configurar as chaves de duas formas:
+1.  **Pela Interface (Recomendado)**: No app, clique no ícone de engrenagem no sidebar. As chaves serão salvas de forma encriptada no seu navegador.
+2.  **Via .env**: Crie um arquivo `.env` na pasta `backend/`:
 ```env
 GEMINI_API_KEY=sua_chave_aqui
+OPENAI_API_KEY=sua_chave_fallback_aqui
 ```
 
 ### 3. Instalação e Execução
