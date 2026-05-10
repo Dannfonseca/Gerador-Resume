@@ -75,7 +75,7 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
       if (jobDescText) formData.append('jobDescriptionText', jobDescText);
       if (jobDescFile) formData.append('jobDescriptionFile', jobDescFile);
 
-      const res = await fetch('http://localhost:3000/api/analyze', {
+      const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: getHeaders(),
         body: formData,
@@ -105,7 +105,7 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
         formData.append('boostedKeywords', boostedKeywords.join(', '));
       }
 
-      const res = await fetch('http://localhost:3000/api/generate', {
+      const res = await fetch('/api/generate', {
         method: 'POST',
         headers: getHeaders(),
         body: formData,
@@ -146,7 +146,7 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
         ? `Pontos fortes: ${(analysisData.strengths || []).map(s => s.title).join(', ')}. Keywords encontradas: ${(analysisData.foundKeywords || []).join(', ')}.`
         : '';
 
-      const res = await fetch('http://localhost:3000/api/suggest-keywords', {
+      const res = await fetch('/api/suggest-keywords', {
         method: 'POST',
         headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
@@ -207,7 +207,7 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
     }
     setIsRefining(true);
     try {
-      const res = await fetch('http://localhost:3000/api/refine', {
+      const res = await fetch('/api/refine', {
         method: 'POST',
         headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({

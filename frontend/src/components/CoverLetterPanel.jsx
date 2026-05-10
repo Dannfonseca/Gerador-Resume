@@ -21,7 +21,7 @@ export default function CoverLetterPanel({ resumeText, jobDescription }) {
     const geminiKey = getApiKey('gemini');
     const openaiKey = getApiKey('openai');
     try {
-      const res = await fetch('http://localhost:3000/api/cover-letter', {
+      const res = await fetch('/api/cover-letter', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
