@@ -5,8 +5,8 @@ import { cors } from "@elysiajs/cors";
 import { resolve, extname } from "path";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import OpenAI from "openai";
-import pdfParse from "pdf-parse";
-import mammoth from "mammoth";
+const pdfParse = require("pdf-parse");
+const mammoth = require("mammoth");
 
 const DEFAULT_GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 const DEFAULT_OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
@@ -48,12 +48,12 @@ async function extractResumeText(resume: File, set: any): Promise<string | null>
   if (resume && resume.type === "application/pdf") {
     const arrayBuffer = await resume.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const pdfData = await pdfParse(buffer);
+    const pdfData = await (pdfParse.default || pdfParse)(buffer);
     return pdfData.text;
   } else if (resume && (resume.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || resume.name.endsWith(".docx"))) {
     const arrayBuffer = await resume.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const result = await mammoth.extractRawText({ buffer });
+    const result = await (mammoth.default || mammoth).extractRawText({ buffer });
     return result.value;
   } else {
     set.status = 400;
