@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Copy, Edit3, Check, Loader2, Code } from 'lucide-react';
+import { getApiKey } from '../lib/apiKey';
 
 /**
  * CoverLetterPanel — Generates and displays a Cover Letter.
@@ -17,10 +18,16 @@ export default function CoverLetterPanel({ resumeText, jobDescription }) {
 
   const handleGenerate = async () => {
     setIsGenerating(true);
+    const geminiKey = getApiKey('gemini');
+    const openaiKey = getApiKey('openai');
     try {
       const res = await fetch('http://localhost:3000/api/cover-letter', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(geminiKey ? { 'x-api-key': geminiKey } : {}),
+          ...(openaiKey ? { 'x-openai-key': openaiKey } : {})
+        },
         body: JSON.stringify({
           resumeText,
           jobDescription

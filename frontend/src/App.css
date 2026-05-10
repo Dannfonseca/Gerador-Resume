@@ -202,6 +202,47 @@ body {
   color: var(--secondary);
   text-align: left;
   letter-spacing: 0.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.docs-link-btn, .settings-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  color: var(--secondary);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 0;
+  transition: color 0.2s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.docs-link-btn:hover, .settings-toggle-btn:hover {
+  color: var(--tertiary);
+}
+
+.sidebar-top {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
+
+/* Modal Styling */
+.modal-overlay {
+  background-color: rgba(26, 28, 30, 0.6) !important;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  border: 1px solid var(--primary) !important;
+  box-shadow: 20px 20px 0px rgba(26, 28, 30, 0.1) !important;
 }
 
 /* ====== MAIN VIEWS ====== */

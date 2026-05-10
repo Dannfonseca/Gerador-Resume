@@ -4,14 +4,52 @@ import { formatResumeToLatex, formatCoverLetterToLatex } from "./services/latexS
 import { cors } from "@elysiajs/cors";
 import { resolve, extname } from "path";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import OpenAI from "openai";
 const pdfParse = require("pdf-parse");
 const mammoth = require("mammoth");
 
-if (!process.env.GEMINI_API_KEY) {
+const DEFAULT_GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+const DEFAULT_OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+
+if (!DEFAULT_GEMINI_API_KEY) {
   console.warn("⚠️ GEMINI_API_KEY is not set in the environment variables!");
 }
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+/**
+ * Helper to get Gemini Generative AI instance with a specific key or default.
+ */
+function getGenAI(requestKey?: string | null) {
+  const key = requestKey || DEFAULT_GEMINI_API_KEY;
+  return new GoogleGenerativeAI(key);
+}
+
+/**
+ * Helper to get OpenAI instance with a specific key or default.
+ */
+function getOpenAI(requestKey?: string | null) {
+  const key = requestKey || DEFAULT_OPENAI_API_KEY;
+  if (!key) return null;
+  return new OpenAI({ apiKey: key });
+}
+
+/**
+ * Executes a function with Gemini and falls back to OpenAI if it fails.
+ */
+async function withFallback<T>(
+  geminiFn: () => Promise<T>,
+  openaiFn: () => Promise<T>,
+  hasOpenAIKey: boolean
+): Promise<T> {
+  try {
+    return await geminiFn();
+  } catch (error) {
+    console.error("Gemini failed, trying fallback...", error);
+    if (hasOpenAIKey || DEFAULT_OPENAI_API_KEY) {
+      return await openaiFn();
+    }
+    throw error;
+  }
+}
 
 // ========================================================================
 // Helper: Extract text from uploaded resume file (PDF or DOCX)
@@ -390,64 +428,66 @@ const app = new Elysia()
   // ────────────────────────────────────────────────────────────────────────
   .post(
     "/api/analyze",
-    async ({ body, set }) => {
+    async ({ body, set, headers }) => {
       try {
         const { resume, jobDescriptionText, jobDescriptionFile } = body;
+        const requestGeminiKey = headers["x-api-key"];
+        const requestOpenaiKey = headers["x-openai-key"];
 
         const resumeText = await extractResumeText(resume, set);
         if (!resumeText) {
           return { error: "Formato de currículo inválido. Envie um PDF ou DOCX." };
         }
 
-        const model = genAI.getGenerativeModel({
-          model: "gemini-2.5-flash",
-          generationConfig: {
-            temperature: 0, // Determinístico para scores consistentes
-          }
-        });
-
-        const contents: any[] = [];
-
-        if (jobDescriptionFile && jobDescriptionFile.type.startsWith('image/')) {
-          const buffer = Buffer.from(await jobDescriptionFile.arrayBuffer());
-          contents.push({
-            inlineData: {
-              data: buffer.toString("base64"),
-              mimeType: jobDescriptionFile.type
-            }
+        const runGemini = async () => {
+          const currentGenAI = getGenAI(requestGeminiKey);
+          const model = currentGenAI.getGenerativeModel({
+            model: "gemini-1.5-flash",
+            generationConfig: { temperature: 0 }
           });
-        }
 
-        const prompt = `
-          ${ANALYSIS_SYSTEM_PROMPT}
-          
-          CURRÍCULO:
-          ${resumeText}
-          
-          DESCRIÇÃO DA VAGA:
-          ${jobDescriptionText || "Não fornecida"}
-        `;
+          const contents: any[] = [];
+          if (jobDescriptionFile && jobDescriptionFile.type.startsWith('image/')) {
+            const buffer = Buffer.from(await jobDescriptionFile.arrayBuffer());
+            contents.push({
+              inlineData: {
+                data: buffer.toString("base64"),
+                mimeType: jobDescriptionFile.type
+              }
+            });
+          }
 
-        contents.push(prompt);
+          const prompt = `${ANALYSIS_SYSTEM_PROMPT}\n\nCURRÍCULO:\n${resumeText}\n\nDESCRIÇÃO DA VAGA:\n${jobDescriptionText || "Não fornecida"}`;
+          contents.push(prompt);
 
-        const result = await model.generateContent(contents);
-        let text = result.response.text();
-
-        // Clean JSON response
-        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-          throw new Error("Resposta da IA não contém JSON válido");
-        }
-
-        const parsedAnalysis = JSON.parse(jsonMatch[0]);
-        const validatedAnalysis = AnalysisResponseSchema.parse(parsedAnalysis);
-
-        return {
-          success: true,
-          data: validatedAnalysis
+          const result = await model.generateContent(contents);
+          let text = result.response.text();
+          text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) throw new Error("Resposta da IA não contém JSON válido");
+          return JSON.parse(jsonMatch[0]);
         };
 
+        const runOpenAI = async () => {
+          const openai = getOpenAI(requestOpenaiKey);
+          if (!openai) throw new Error("OpenAI API Key not configured");
+          
+          const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: ANALYSIS_SYSTEM_PROMPT },
+              { role: "user", content: `CURRÍCULO:\n${resumeText}\n\nDESCRIÇÃO DA VAGA:\n${jobDescriptionText || "Não fornecida"}` }
+            ],
+            response_format: { type: "json_object" }
+          });
+          
+          return JSON.parse(response.choices[0].message.content || "{}");
+        };
+
+        const analysis = await withFallback(runGemini, runOpenAI, !!requestOpenaiKey);
+        const validatedAnalysis = AnalysisResponseSchema.parse(analysis);
+
+        return { success: true, data: validatedAnalysis };
       } catch (error) {
         console.error("Analyze Error:", error);
         set.status = 500;
@@ -468,210 +508,113 @@ const app = new Elysia()
   // ────────────────────────────────────────────────────────────────────────
   .post(
     "/api/suggest-keywords",
-    async ({ body, set }) => {
+    async ({ body, set, headers }) => {
       try {
         const { resumeText, jobDescription, missingKeywords } = body;
+        const requestGeminiKey = headers["x-api-key"];
+        const requestOpenaiKey = headers["x-openai-key"];
 
-        const model = genAI.getGenerativeModel({
-          model: "gemini-2.5-flash",
-          generationConfig: { temperature: 0.1 }
-        });
-
-        const prompt = `
-          Você é um consultor especialista em ATS e otimização de currículos.
-          
-          Analise o currículo e a vaga abaixo e sugira palavras-chave e expressões estratégicas que, se inseridas naturalmente no currículo, podem aumentar significativamente o Match Score.
-
-          ## REGRAS:
-          1. Sugira entre 8 e 15 palavras/expressões.
-          2. Cada sugestão deve ter:
-             - "keyword": a palavra ou expressão exata (ex: "metodologias ágeis", "CI/CD", "liderança de equipe")
-             - "category": uma de ["hard_skill", "soft_skill", "tool", "methodology", "certification", "domain"]
-             - "reason": uma frase curta explicando POR QUE essa keyword ajuda (máx 80 chars)
-             - "priority": "high", "medium" ou "low" — baseado no quanto aparece na vaga
-          3. Priorize keywords que estão na VAGA mas NÃO estão no currículo.
-          4. Inclua variações de termos (ex: se a vaga diz "React.js", sugira "React.js" e "React").
-          5. NÃO sugira keywords que já estão claramente presentes no currículo.
-          6. Use Português do Brasil para as razões. Keywords técnicas podem ficar em inglês.
-
-          ${missingKeywords ? `\n## KEYWORDS JÁ IDENTIFICADAS COMO FALTANTES:\n${missingKeywords}\nInclua estas e adicione mais que façam sentido.\n` : ''}
-
-          ## CURRÍCULO:
-          ${resumeText}
-
-          ## VAGA:
-          ${jobDescription || "Não especificada"}
-
-          Responda APENAS com um JSON array no formato:
-          [
-            { "keyword": "...", "category": "...", "reason": "...", "priority": "..." }
-          ]
+        const systemPrompt = `Você é um consultor especialista em ATS. Sugira entre 8 e 15 palavras-chave estratégicas. Responda APENAS com um JSON array no formato: [ { "keyword": "...", "category": "...", "reason": "...", "priority": "..." } ]`;
+        const userPrompt = `
+          ${missingKeywords ? `\nKEYWORDS JÁ IDENTIFICADAS:\n${missingKeywords}\n` : ''}
+          CURRÍCULO:\n${resumeText}\n\nVAGA:\n${jobDescription || "Não especificada"}
         `;
 
-        const result = await model.generateContent(prompt);
-        let text = result.response.text();
-        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        
-        const arrayMatch = text.match(/\[[\s\S]*\]/);
-        if (!arrayMatch) {
-          throw new Error("Resposta não contém array JSON válido");
-        }
-
-        const suggestions = JSON.parse(arrayMatch[0]);
-
-        return {
-          success: true,
-          suggestions
+        const runGemini = async () => {
+          const currentGenAI = getGenAI(requestGeminiKey);
+          const model = currentGenAI.getGenerativeModel({ model: "gemini-1.5-flash", generationConfig: { temperature: 0.1 } });
+          const result = await model.generateContent(systemPrompt + userPrompt);
+          let text = result.response.text();
+          text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+          const arrayMatch = text.match(/\[[\s\S]*\]/);
+          if (!arrayMatch) throw new Error("Invalid Gemini response");
+          return JSON.parse(arrayMatch[0]);
         };
-      } catch (error) {
-        console.error("Suggest Keywords Error:", error);
-        set.status = 500;
-        return { error: "Erro ao gerar sugestões de palavras-chave." };
-      }
-    },
-    {
-      body: t.Object({
-        resumeText: t.String(),
-        jobDescription: t.Optional(t.String()),
-        missingKeywords: t.Optional(t.String())
-      })
-    }
-  )
-  // ────────────────────────────────────────────────────────────────────────
-  // PILAR 2: POST /api/generate — Geração com Nível de Agressividade
-  // ────────────────────────────────────────────────────────────────────────
-  .post(
+
+        const runOpenAI = async () => {
+          const openai = getOpenAI(requestOpenaiKey);
+          if (!openai) throw new Error("OpenAI API Key not configured");
+          const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            response_format: { type: "json_object" }
+          });
+          const content = response.choices[0].message.content || "[]";
+          const parsed = JSON.parse(content);
+          return Array.is  .post(
     "/api/generate",
-    async ({ body, set }) => {
+    async ({ body, set, headers }) => {
       try {
         const { resume, jobDescriptionText, jobDescriptionFile, level, boostedKeywords } = body;
+        const requestGeminiKey = headers["x-api-key"];
+        const requestOpenaiKey = headers["x-openai-key"];
         
         let resumeText = await extractResumeText(resume, set);
-        if (!resumeText) {
-          return { error: "Formato de currículo inválido. Envie um PDF ou DOCX." };
-        }
+        if (!resumeText) return { error: "Formato de currículo inválido." };
 
         const aggressiveness = level || "balanced";
-        const levelInfo = LEVEL_INSTRUCTIONS[aggressiveness] || LEVEL_INSTRUCTIONS.balanced;
+        const levelInfo = LEVEL_INSTRUCTIONS[aggressiveness];
 
-        const prompt = `
-          Você é um especialista em recrutamento de alto nível e sistemas ATS (Applicant Tracking Systems).
-          Eu vou te fornecer o conteúdo do Currículo Atual do candidato e as informações da Vaga de Emprego desejada.
-          
-          Sua tarefa é gerar DUAS VERSÕES OTIMIZADAS e SEPARADAS do currículo.
+        const prompt = `Você é um especialista em ATS. Gere duas versões otimizadas do currículo: 'professional' e 'heritage'. Use o nível: ${levelInfo.name}. ${boostedKeywords ? `Keywords: ${boostedKeywords}` : ''}\n\nCURRÍCULO:\n${resumeText}\n\nVAGA:\n${jobDescriptionText || "Veja anexo"}`;
 
-          ## NÍVEL DE INTERVENÇÃO: **${levelInfo.name}** — ${levelInfo.focus}
-          ${levelInfo.actions}
-
-          ## REGRAS DE OURO:
-          1. NUNCA invente experiências, empresas ou certificações que não existem no original.
-          2. Mantenha datas e empresas exatamente como estão.
-          3. Keywords devem ser inseridas de forma NATURAL, não forçada.
-          4. Resultados quantificados são mais impactantes (use quando possível inferir do contexto).
-          5. Se alguma seção não existir no original, OMITA ela (não invente conteúdo). Quando o candidato não tiver emprego formal, use projetos, freelas, estudos práticos ou trabalhos pessoais que apareçam no currículo como experiência prática.
-          6. PRESERVE todos os links do currículo original (portfolio, github, behance, dribbble, etc) — NÃO os remova.
-          7. Cada bullet point de experiência deve preferencialmente começar com verbo de ação (Liderou, Desenvolveu, Implementou, Otimizou).
-          8. Use formatação Markdown (apenas **negrito**) nos textos de responsabilidades e no resumo (summary) para destacar as palavras-chave cruciais, métricas numéricas de impacto e tecnologias relevantes para o ATS. NÃO use markdown nas seções de título, nome ou habilidades (skills).
-
-          ${boostedKeywords ? `## KEYWORDS OBRIGATÓRIAS PARA INCORPORAR:
-          O usuário selecionou as seguintes palavras-chave para serem inseridas NATURALMENTE no currículo.
-          Você DEVE incorporar cada uma delas onde fizer sentido (no summary, nas responsibilities, ou nas skills).
-          NÃO force inserções artificiais — integre de forma profissional e coerente.
-          Keywords: ${boostedKeywords}
-          ` : ''}
-
-          REGRA DE SEPARAÇÃO:
-          - As regras da versão "heritage" não podem alterar, resumir ou esvaziar a versão "professional".
-          - As duas versões devem usar o mesmo idioma da vaga, mas podem ter estrutura e nível de concisão diferentes.
-
-          VERSÃO 1: "professional" (template profissional):
-          1. Detecte o idioma da Vaga de Emprego (Job Description).
-          2. Reescreva TODO o currículo do candidato estritamente no MESMO IDIOMA da vaga, para que ele tenha o MÁXIMO de aderência à vaga (ATS Friendly).
-          3. Use os mesmos verbos de ação e palavras-chave encontradas na vaga.
-          4. Mantenha a seção "experience" preenchida. Ela NÃO pode voltar vazia.
-          5. Melhore o Resumo Profissional ("summary").
-          6. Retorne no campo "language" o valor "pt-BR" ou "en-US".
-
-          VERSÃO 2: "heritage" (novo padrão compacto, à parte):
-          1. Extremamente conciso e focado (ideal para 1 página). Oculte rigorosamente experiências não relacionadas.
-          2. NÃO inclua o "Resumo Profissional" (deixe em branco) a não ser que seja crucial.
-          3. Experiência focada em métricas (ex: "Fiz X para solucionar Y resultando em Z% de melhora").
-          4. Adicione "links" (LinkedIn, GitHub) e uma seção de "projetos" se o candidato tiver.
-          5. Skills categorizadas rigidamente em "Languages", "Frameworks", "Databases", "Technologies / Tools" e "Practices".
-          6. Mantenha no idioma da vaga também.
-
-          Aqui está o Currículo Atual:
-          """
-          ${resumeText}
-          """
-
-          Aqui está a Descrição da Vaga:
-          """
-          ${jobDescriptionText || "Veja a imagem anexa."}
-          """
-        `;
-
-        const model = genAI.getGenerativeModel({
-          model: "gemini-2.5-flash",
-          generationConfig: {
-            temperature: aggressiveness === 'conservative' ? 0.1 : aggressiveness === 'aggressive' ? 0.4 : 0.2,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: SchemaType.OBJECT,
-              properties: {
-                professional: professionalResumeSchema,
-                heritage: heritageResumeSchema
-              },
-              required: ["professional", "heritage"]
-            }
-          }
-        });
-
-        const contents: any[] = [];
-        
-        if (jobDescriptionFile && jobDescriptionFile.type.startsWith('image/')) {
-          const buffer = Buffer.from(await jobDescriptionFile.arrayBuffer());
-          contents.push({
-            inlineData: {
-              data: buffer.toString("base64"),
-              mimeType: jobDescriptionFile.type
+        const runGemini = async () => {
+          const currentGenAI = getGenAI(requestGeminiKey);
+          const model = currentGenAI.getGenerativeModel({
+            model: "gemini-1.5-flash",
+            generationConfig: {
+              temperature: 0.2,
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: SchemaType.OBJECT,
+                properties: { professional: professionalResumeSchema, heritage: heritageResumeSchema },
+                required: ["professional", "heritage"]
+              }
             }
           });
-        }
-        
-        contents.push(prompt);
+          const result = await model.generateContent(prompt);
+          return JSON.parse(result.response.text());
+        };
 
-        const result = await model.generateContent(contents);
-        const responseText = result.response.text();
+        const runOpenAI = async () => {
+          const openai = getOpenAI(requestOpenaiKey);
+          if (!openai) throw new Error("OpenAI Key not set");
+          const response = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [{ role: "user", content: prompt }],
+            response_format: { type: "json_object" }
+          });
+          return JSON.parse(response.choices[0].message.content || "{}");
+        };
 
-        const generatedJson = JSON.parse(responseText);
-        const validatedData = GeminiResponseSchema.parse(generatedJson);
+        const generatedData = await withFallback(runGemini, runOpenAI, !!requestOpenaiKey);
+        const validatedData = GeminiResponseSchema.parse(generatedData);
 
-        // Pilar 3: Generate LaTeX for both versions
         const latex = {
           professional: formatResumeToLatex(validatedData.professional as any),
           heritage: formatResumeToLatex(validatedData.heritage as any)
         };
 
-        // ── Post-Generation Analysis: Run ATS analysis on the generated resume ──
-        let postAnalysis = null;
-        try {
-          const proData = validatedData.professional as any;
-          const generatedResumeText = buildResumeText(proData);
-
-          const analysisModel = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
-            generationConfig: { temperature: 0 }
-          });
-
-          const analysisPrompt = `
-            ${ANALYSIS_SYSTEM_PROMPT}
-            
-            CURRÍCULO:
-            ${generatedResumeText}
-            
-            DESCRIÇÃO DA VAGA:
-            ${jobDescriptionText || "Não fornecida"}
+        return { success: true, data: validatedData, latex, level: aggressiveness };
+      } catch (error) {
+        console.error("Generate Error:", error);
+        set.status = 500;
+        return { error: "Erro na geração do currículo." };
+      }
+    },
+    {
+      body: t.Object({
+        resume: t.File(),
+        jobDescriptionText: t.Optional(t.String()),
+        jobDescriptionFile: t.Optional(t.File()),
+        level: t.Optional(t.String()),
+        boostedKeywords: t.Optional(t.String())
+      })
+    }
+  )
+tionText || "Não fornecida"}
           `;
 
           const analysisResult = await analysisModel.generateContent(analysisPrompt);
@@ -719,8 +662,11 @@ const app = new Elysia()
       try {
         const { resumeText, jobDescription } = body;
 
-        const model = genAI.getGenerativeModel({
-          model: "gemini-2.5-flash",
+        const requestApiKey = headers["x-api-key"];
+        const currentGenAI = getGenAI(requestApiKey);
+
+        const model = currentGenAI.getGenerativeModel({
+          model: "gemini-2.0-flash",
           generationConfig: {
             temperature: 0.5,
           }
@@ -792,7 +738,10 @@ const app = new Elysia()
           Sua tarefa: Retorne APENAS o novo trecho reescrito. Nada de introduções ou explicações. Se for uma responsabilidade de cargo, retorne apenas a frase direta. Mantenha no mesmo idioma.
         `;
 
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { temperature: 0.3 } });
+        const requestApiKey = headers["x-api-key"];
+        const currentGenAI = getGenAI(requestApiKey);
+        
+        const model = currentGenAI.getGenerativeModel({ model: "gemini-2.0-flash", generationConfig: { temperature: 0.3 } });
         const result = await model.generateContent(prompt);
         const responseText = result.response.text().trim();
 

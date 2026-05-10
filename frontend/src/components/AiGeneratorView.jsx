@@ -11,9 +11,20 @@ import CoverLetterPanel from './CoverLetterPanel';
 import ScoreComparison from './ScoreComparison';
 import KeywordBoost from './KeywordBoost';
 import { RESUME_LAYOUTS, normalizeGeneratedResumes } from '../lib/resumePayload';
+import { getApiKey } from '../lib/apiKey';
 import '../styles/resume.css';
 
 export default function AiGeneratorView({ currentStep, setCurrentStep }) {
+  // Helper for fetch headers
+  const getHeaders = (extra = {}) => {
+    const geminiKey = getApiKey('gemini');
+    const openaiKey = getApiKey('openai');
+    return {
+      ...(geminiKey ? { 'x-api-key': geminiKey } : {}),
+      ...(openaiKey ? { 'x-openai-key': openaiKey } : {}),
+      ...extra
+    };
+  };
   // ── State ──────────────────────────────────────────
   const [resumeFile, setResumeFile] = useState(null);
   const [jobDescFile, setJobDescFile] = useState(null);
@@ -66,6 +77,7 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
 
       const res = await fetch('http://localhost:3000/api/analyze', {
         method: 'POST',
+        headers: getHeaders(),
         body: formData,
       });
 
@@ -95,6 +107,7 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
 
       const res = await fetch('http://localhost:3000/api/generate', {
         method: 'POST',
+        headers: getHeaders(),
         body: formData,
       });
 
@@ -135,7 +148,7 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
 
       const res = await fetch('http://localhost:3000/api/suggest-keywords', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           resumeText: resumeSummary,
           jobDescription: jobDescText,
@@ -196,7 +209,7 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
     try {
       const res = await fetch('http://localhost:3000/api/refine', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           text: editModal.value,
           jobDescription: jobDescText,

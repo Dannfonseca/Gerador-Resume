@@ -1,4 +1,6 @@
-import { Upload, Search, Sliders, Key, Zap, FileText, Check } from 'lucide-react';
+import { Upload, Search, Sliders, Key, Zap, FileText, Check, BookOpen, Settings } from 'lucide-react';
+import { useState } from 'react';
+import SettingsModal from './SettingsModal';
 
 const WIZARD_STEPS = [
   { id: 'input',    label: 'Upload',       icon: Upload,   desc: 'Enviar currículo e vaga' },
@@ -10,16 +12,28 @@ const WIZARD_STEPS = [
 
 /**
  * Sidebar — Wizard-style step indicator for the ATS pipeline.
- * Non-interactive: shows current progress only.
+ * Now includes documentation and settings access.
  */
-export default function Sidebar({ currentStep }) {
+export default function Sidebar({ currentStep, onGoToDocs }) {
+  const [showSettings, setShowSettings] = useState(false);
   const currentIdx = WIZARD_STEPS.findIndex(s => s.id === currentStep);
 
   return (
     <aside className="sidebar">
-      <div className="logo">
-        <div className="logo-icon"></div>
-        <h2>ATS Pro</h2>
+      <div className="sidebar-top">
+        <div className="logo">
+          <div className="logo-icon"></div>
+          <h2>ATS Pro</h2>
+        </div>
+
+        <button 
+          className="docs-link-btn" 
+          onClick={onGoToDocs}
+          title="Ver guia de instalação"
+        >
+          <BookOpen size={18} />
+          <span>Documentação</span>
+        </button>
       </div>
 
       <div className="wizard-container">
@@ -58,8 +72,17 @@ export default function Sidebar({ currentStep }) {
       </div>
 
       <div className="sidebar-footer">
+        <button 
+          className="settings-toggle-btn"
+          onClick={() => setShowSettings(true)}
+        >
+          <Settings size={18} />
+          <span>Configurações</span>
+        </button>
         <p>Otimizado para Sistemas de Rastreamento.</p>
       </div>
+
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </aside>
   );
 }
