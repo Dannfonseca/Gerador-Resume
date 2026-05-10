@@ -264,6 +264,6 @@ const app = new Elysia()
   }, { body: t.Object({ text: t.String(), jobDescription: t.Optional(t.String()), instruction: t.Optional(t.String()) }) })
 
   .get("*", () => Bun.file(resolve(DIST_DIR, "index.html")))
-  .listen(3000);
+  .listen(process.env.PORT || 3000);
 
 console.log(`🦊 Backend rodando em http://${app.server?.hostname}:${app.server?.port}`);
