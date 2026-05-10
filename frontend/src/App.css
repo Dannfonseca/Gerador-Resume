@@ -397,3 +397,43 @@ h3 {
   color: var(--primary);
   font-weight: 600;
 }
+
+/* ====== PRINT STYLES ====== */
+@media print {
+  .sidebar, 
+  .no-print, 
+  .btn-primary, 
+  .btn-secondary, 
+  .wizard-container, 
+  .logo, 
+  .sidebar-footer,
+  .nav-menu,
+  button {
+    display: none !important;
+  }
+
+  .app-container {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .main-content {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    background-color: white !important;
+  }
+
+  .article-container {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Force background colors and colors for printing */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

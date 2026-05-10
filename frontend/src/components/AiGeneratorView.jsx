@@ -425,7 +425,7 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
       {/* ── STEP: RESULT ───────────────────────────────── */}
       {currentStep === 'result' && generatedData && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="resume-toolbar glass-panel">
+          <div className="resume-toolbar glass-panel no-print">
             <div className="resume-info">
               <h3>Sucesso!</h3>
               <p>Foram gerados 2 modelos otimizados para sua vaga.</p>
@@ -476,7 +476,7 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
           </div>
 
           {/* Score Comparison — Before vs After */}
-          <div style={{ maxWidth: '900px', margin: '0 auto 24px' }}>
+          <div className="no-print" style={{ maxWidth: '900px', margin: '0 auto 24px' }}>
             <ScoreComparison before={analysisData} after={postAnalysisData} />
           </div>
 
@@ -491,7 +491,7 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
           </div>
 
           {/* Cover Letter Panel — Pilar 4 */}
-          <div style={{ maxWidth: '900px', margin: '40px auto 0' }}>
+          <div className="no-print" style={{ maxWidth: '900px', margin: '40px auto 0' }}>
             <CoverLetterPanel
               resumeText={resumeTextForCoverLetter}
               jobDescription={jobDescText}
@@ -500,7 +500,7 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
 
           {/* LaTeX Expandable */}
           {latexData && (
-            <div style={{ maxWidth: '900px', margin: '24px auto 60px' }}>
+            <div className="no-print" style={{ maxWidth: '900px', margin: '24px auto 60px' }}>
               <button
                 className="btn-secondary"
                 style={{ width: '100%', justifyContent: 'center' }}

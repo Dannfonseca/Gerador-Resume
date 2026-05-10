@@ -558,7 +558,16 @@ const app = new Elysia()
         const aggressiveness = level || "balanced";
         const levelInfo = LEVEL_INSTRUCTIONS[aggressiveness];
 
-        const prompt = `Você é um especialista em ATS. Gere duas versões otimizadas do currículo: 'professional' e 'heritage'. Use o nível: ${levelInfo.name}. ${boostedKeywords ? `Keywords: ${boostedKeywords}` : ''}\n\nCURRÍCULO:\n${resumeText}\n\nVAGA:\n${jobDescriptionText || "Veja anexo"}`;
+        const prompt = `Você é um especialista em ATS. Gere duas versões otimizadas do currículo: 'professional' e 'heritage'. 
+        Use o nível: ${levelInfo.name}. ${boostedKeywords ? `Keywords: ${boostedKeywords}` : ''}
+        
+        ## REGRAS CRÍTICAS DE FORMATAÇÃO:
+        1. NUNCA use markdown (** ou __) na seção de 'skills' ou 'habilidades'.
+        2. Nas seções de 'experience' e 'summary', você PODE usar **negrito** para destacar tecnologias e métricas.
+        3. Evite adjetivos genéricos e subjetivos nas skills (ex: "proativo", "código limpo", "escalável"). Foque em tecnologias, ferramentas e metodologias técnicas reais.
+        4. Preserve todos os links originais.
+        
+        CURRÍCULO:\n${resumeText}\n\nVAGA:\n${jobDescriptionText || "Veja anexo"}`;
 
         const runGemini = async () => {
           const currentGenAI = getGenAI(requestGeminiKey);
