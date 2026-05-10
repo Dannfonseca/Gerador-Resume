@@ -24,19 +24,19 @@ export default function Sidebar({ currentStep, activeTab, onSwitchTab }) {
 
         <div className="nav-menu">
           <button 
-            className={`nav-item ${activeTab === 'app' ? 'active' : ''}`} 
-            onClick={() => onSwitchTab('app')}
-          >
-            <LayoutDashboard size={18} />
-            <span>Análise de Currículo</span>
-          </button>
-          
-          <button 
             className={`nav-item ${activeTab === 'docs' ? 'active' : ''}`} 
             onClick={() => onSwitchTab('docs')}
           >
             <BookOpen size={18} />
             <span>Documentação</span>
+          </button>
+
+          <button 
+            className={`nav-item ${activeTab === 'app' ? 'active' : ''}`} 
+            onClick={() => onSwitchTab('app')}
+          >
+            <LayoutDashboard size={18} />
+            <span>Análise de Currículo</span>
           </button>
         </div>
       </div>
