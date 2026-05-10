@@ -83,7 +83,8 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || 'Erro na análise');
+        const errorMessage = err.details ? `${err.error} (${err.details})` : (err.error || 'Erro na análise');
+        throw new Error(errorMessage);
       }
       return res.json();
     },
@@ -113,7 +114,8 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || 'Erro na geração');
+        const errorMessage = err.details ? `${err.error} (${err.details})` : (err.error || 'Erro na geração');
+        throw new Error(errorMessage);
       }
       return res.json();
     },
@@ -130,6 +132,8 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
     e.preventDefault();
     if (!resumeFile) return alert('Por favor, envie seu currículo em PDF.');
     if (!jobDescText && !jobDescFile) return alert('Por favor, informe a descrição da vaga (texto ou print).');
+    
+    // Reset error UI if needed or just let mutation handle it
     analyzeMutation.mutate();
   };
 
