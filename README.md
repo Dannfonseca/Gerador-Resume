@@ -1,64 +1,61 @@
-# 🚀 ATS Pro: Enterprise Resume Intelligence Platform
+# ATS Pro: Enterprise Resume Intelligence Platform
 
-O **ATS Pro** é uma plataforma de elite para otimização de carreira, projetada para transformar currículos comuns em documentos de alta conversão. Utilizando o pipeline de 5 pilares de inteligência artificial, o sistema garante que seu perfil seja não apenas lido, mas priorizado por sistemas ATS (Applicant Tracking Systems) das maiores empresas do mundo.
+O ATS Pro é uma plataforma avançada para otimização de carreira, desenvolvida para transformar currículos em documentos de alta conversão. Utilizando um pipeline estruturado em cinco pilares de inteligência artificial, o sistema garante que seu perfil seja não apenas lido, mas priorizado por sistemas ATS (Applicant Tracking Systems) das maiores empresas do mercado.
 
-![Status do Projeto](https://img.shields.io/badge/Status-Production--Ready-green)
-![IA](https://img.shields.io/badge/AI-Gemini%202.5%20Flash-blueviolet)
-![Design](https://img.shields.io/badge/Design-Heritage%20Architecture-orange)
+## O Pipeline de 5 Pilares (Enterprise Flow)
 
-## 💎 O Pipeline de 5 Pilares (Enterprise Flow)
+Diferente de geradores de currículos convencionais, o ATS Pro utiliza um fluxo sequencial de otimização para garantir resultados precisos:
 
-Diferente de geradores simples, o ATS Pro utiliza um fluxo sequencial de otimização:
+1.  **Diagnóstico (Raio-X ATS)**: Realiza uma análise profunda do currículo original em comparação com a vaga desejada, gerando métricas detalhadas de ATS Score e Match Score antes de qualquer alteração.
+2.  **Controle de Agressividade (Override)**: O usuário define o nível de interferência da inteligência artificial:
+    *   *Conservador*: Foca em ajustes precisos de gramática e formatação.
+    *   *Equilibrado*: Realiza reescritas estratégicas e alinhamento de palavras-chave.
+    *   *Agressivo*: Promove uma transformação narrativa total para máxima conversão.
+3.  **Boost de Palavras-Chave**: O sistema identifica termos técnicos e competências cruciais ausentes no documento. O usuário seleciona quais deseja ativar para que sejam incorporadas de forma natural ao texto.
+4.  **Geração de Alta Fidelidade**: Produção simultânea de dois modelos otimizados: Professional (focado em robustez tradicional) e Heritage (focado em minimalismo arquitetônico).
+5.  **Relatório de Impacto**: Apresenta uma visualização comparativa de "Antes vs Depois", demonstrando o ganho real de pontuação e os termos estratégicos incorporados.
 
-1.  **🔍 Diagnóstico (Raio-X ATS)**: Análise profunda do seu currículo original contra a vaga, gerando um **ATS Score** e um **Match Score** detalhado antes de qualquer alteração.
-2.  **⚙️ Override de Agressividade**: Você define o nível de intervenção da IA:
-    *   *Conservador*: Apenas ajustes gramaticais e de formatação.
-    *   *Equilibrado*: Reescrita estratégica focada em palavras-chave.
-    *   *Agressivo*: Transformação total narrativa para máxima conversão.
-3.  **⚡ Keyword Boost**: O sistema sugere expressões e hard skills cruciais que estão faltando. Você escolhe quais ativar para que a IA as incorpore naturalmente.
-4.  **📄 Geração de Alta Fidelidade**: Produção instantânea de dois modelos: **Professional** (Tradicional Robusto) e **Heritage** (Minimalismo Arquitetônico).
-5.  **📈 Relatório Comparativo**: Visualização clara de "Antes vs Depois", mostrando o ganho real de pontuação e as palavras-chave conquistadas.
+## Funcionalidades Principais
 
-## ✨ Funcionalidades Premium
+*   **Exportação em LaTeX**: Geração de código LaTeX e documentos PDF com estrutura otimizada para parsers de recrutamento.
+*   **Módulo de Carta de Apresentação**: Criação de cartas de apresentação estratégicas e personalizadas para a vaga.
+*   **Interface Wizard**: Experiência de usuário guiada que orienta por todas as etapas da otimização.
+*   **Design System Heritage**: Estética profissional baseada em legibilidade e clareza visual.
+*   **Análise Multimodal**: Suporte para descrições de vaga enviadas por texto ou capturas de tela.
 
-*   **Exportação LaTeX**: Gere código LaTeX e PDFs com estrutura perfeita para parsers de recrutamento.
-*   **Cover Letter Module**: Geração de cartas de apresentação estratégicas alinhadas ao novo currículo.
-*   **Wizard UI**: Interface intuitiva que guia o usuário por todas as etapas da otimização.
-*   **Heritage Design System**: Estética baseada no brutalismo corporativo e minimalismo, garantindo legibilidade máxima.
-*   **Multimodal**: Suporte para descrições de vaga via texto ou captura de tela (OCR via IA).
+## Stack Tecnológica
 
-## 🛠️ Stack Tecnológica
+*   **Ambiente**: Bun
+*   **Backend**: ElysiaJS
+*   **Frontend**: React, Vite, Framer Motion
+*   **Inteligência Artificial**: Google Gemini 2.5 Flash
+*   **Processamento**: LaTeX Service, PDF-Parse, Mammoth
 
-*   **Runtime**: [Bun](https://bun.sh/) (Performance extrema)
-*   **Backend**: ElysiaJS (Type-safe & Fast)
-*   **Frontend**: React + Vite, Framer Motion (Animações), Lucide Icons
-*   **IA**: Google Gemini 2.5 Flash (Structured Outputs)
-*   **Documentos**: PDF-Parse, Mammoth, LaTeX Service
-
-## 🚀 Como Iniciar
+## Como Iniciar o Projeto
 
 ### 1. Requisitos
-*   Possuir o **Bun** instalado.
-*   Uma chave de API do **Google Gemini** (Obtenha em [aistudio.google.com](https://aistudio.google.com/)).
+*   Possuir o runtime Bun instalado em seu sistema.
+*   Uma chave de API válida do Google Gemini.
 
 ### 2. Configuração
-Crie um arquivo `backend/.env`:
+Crie um arquivo nomeado `.env` dentro do diretório `backend/` com o seguinte conteúdo:
 ```env
 GEMINI_API_KEY=sua_chave_aqui
 ```
 
 ### 3. Instalação e Execução
+Na raiz do projeto, execute os comandos abaixo:
 ```bash
-# Instala dependências (Monorepo)
+# Instalação de dependências do monorepo
 bun install
 
-# Inicia Frontend (5173) e Backend (3000) simultaneamente
+# Inicialização do frontend e backend
 bun run dev
 ```
 
-## 📄 Licença
-Distribuído sob a licença MIT. Veja `LICENSE` para mais informações.
+## Licença
+Este projeto é distribuído sob a licença MIT. Consulte o arquivo de licença para mais detalhes.
 
 ---
-**ATS Pro** — *Sua carreira, otimizada por algoritmos de elite.*
+**ATS Pro** — Inteligência aplicada à evolução de carreira.
 Desenvolvido por [Dannfonseca](https://github.com/Dannfonseca).
