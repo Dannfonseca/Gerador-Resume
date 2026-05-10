@@ -241,6 +241,27 @@ body {
   color: white;
 }
 
+.settings-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  color: var(--secondary);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 0;
+  transition: color 0.2s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.settings-toggle-btn:hover {
+  color: var(--tertiary);
+}
+
 .wizard-container {
   margin-top: 40px;
   padding-top: 20px;
