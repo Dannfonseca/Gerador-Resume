@@ -9,19 +9,26 @@ const queryClient = new QueryClient();
 
 function AppContent() {
   const [currentStep, setCurrentStep] = useState('input');
+  const [activeTab, setActiveTab] = useState('app'); // 'app' or 'docs'
   const [prevStep, setPrevStep] = useState('input');
 
-  const handleGoToDocs = () => {
-    setPrevStep(currentStep);
-    setCurrentStep('docs');
+  const handleSwitchTab = (tab) => {
+    if (tab === 'docs') {
+      setPrevStep(currentStep);
+    }
+    setActiveTab(tab);
   };
 
   return (
     <div className="app-container">
-      <Sidebar currentStep={currentStep} onGoToDocs={handleGoToDocs} />
+      <Sidebar 
+        currentStep={currentStep} 
+        activeTab={activeTab}
+        onSwitchTab={handleSwitchTab} 
+      />
       <main className="main-content">
-        {currentStep === 'docs' ? (
-          <DocsView onBack={() => setCurrentStep(prevStep)} />
+        {activeTab === 'docs' ? (
+          <DocsView onBack={() => setActiveTab('app')} />
         ) : (
           <AiGeneratorView currentStep={currentStep} setCurrentStep={setCurrentStep} />
         )}

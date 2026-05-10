@@ -1,4 +1,4 @@
-import { Upload, Search, Sliders, Key, Zap, FileText, Check, BookOpen, Settings } from 'lucide-react';
+import { Upload, Search, Sliders, Key, Zap, FileText, Check, BookOpen, Settings, LayoutDashboard } from 'lucide-react';
 import { useState } from 'react';
 import SettingsModal from './SettingsModal';
 
@@ -10,11 +10,7 @@ const WIZARD_STEPS = [
   { id: 'result',   label: 'Resultado',    icon: FileText, desc: 'Currículo otimizado' },
 ];
 
-/**
- * Sidebar — Wizard-style step indicator for the ATS pipeline.
- * Now includes documentation and settings access.
- */
-export default function Sidebar({ currentStep, onGoToDocs }) {
+export default function Sidebar({ currentStep, activeTab, onSwitchTab }) {
   const [showSettings, setShowSettings] = useState(false);
   const currentIdx = WIZARD_STEPS.findIndex(s => s.id === currentStep);
 
@@ -26,50 +22,59 @@ export default function Sidebar({ currentStep, onGoToDocs }) {
           <h2>ATS Pro</h2>
         </div>
 
-        <button 
-          className="docs-link-btn" 
-          onClick={onGoToDocs}
-          title="Ver guia de instalação"
-        >
-          <BookOpen size={18} />
-          <span>Documentação</span>
-        </button>
-      </div>
-
-      <div className="wizard-container">
-        <div className="wizard-title">Pipeline</div>
-        <div className="wizard-steps">
-          {WIZARD_STEPS.map((step, idx) => {
-            const Icon = step.icon;
-            const isActive = idx === currentIdx;
-            const isCompleted = idx < currentIdx;
-            const isPending = idx > currentIdx;
-
-            let statusClass = 'pending';
-            if (isActive) statusClass = 'active';
-            if (isCompleted) statusClass = 'completed';
-
-            return (
-              <div key={step.id} className={`wizard-step ${statusClass}`}>
-                {/* Connector line (not for first step) */}
-                {idx > 0 && (
-                  <div className={`wizard-connector ${isCompleted || isActive ? 'filled' : ''}`} />
-                )}
-                
-                <div className="wizard-step-row">
-                  <div className={`wizard-step-icon ${statusClass}`}>
-                    {isCompleted ? <Check size={14} strokeWidth={3} /> : <Icon size={14} />}
-                  </div>
-                  <div className="wizard-step-content">
-                    <span className="wizard-step-label">{step.label}</span>
-                    <span className="wizard-step-desc">{step.desc}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div className="nav-menu">
+          <button 
+            className={`nav-item ${activeTab === 'app' ? 'active' : ''}`} 
+            onClick={() => onSwitchTab('app')}
+          >
+            <LayoutDashboard size={18} />
+            <span>Análise de Currículo</span>
+          </button>
+          
+          <button 
+            className={`nav-item ${activeTab === 'docs' ? 'active' : ''}`} 
+            onClick={() => onSwitchTab('docs')}
+          >
+            <BookOpen size={18} />
+            <span>Documentação</span>
+          </button>
         </div>
       </div>
+
+      {activeTab === 'app' && (
+        <div className="wizard-container">
+          <div className="wizard-title">Pipeline de Otimização</div>
+          <div className="wizard-steps">
+            {WIZARD_STEPS.map((step, idx) => {
+              const Icon = step.icon;
+              const isActive = idx === currentIdx;
+              const isCompleted = idx < currentIdx;
+
+              let statusClass = 'pending';
+              if (isActive) statusClass = 'active';
+              if (isCompleted) statusClass = 'completed';
+
+              return (
+                <div key={step.id} className={`wizard-step ${statusClass}`}>
+                  {idx > 0 && (
+                    <div className={`wizard-connector ${isCompleted || isActive ? 'filled' : ''}`} />
+                  )}
+                  
+                  <div className="wizard-step-row">
+                    <div className={`wizard-step-icon ${statusClass}`}>
+                      {isCompleted ? <Check size={14} strokeWidth={3} /> : <Icon size={14} />}
+                    </div>
+                    <div className="wizard-step-content">
+                      <span className="wizard-step-label">{step.label}</span>
+                      <span className="wizard-step-desc">{step.desc}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="sidebar-footer">
         <button 
