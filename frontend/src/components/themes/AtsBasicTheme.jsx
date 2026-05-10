@@ -47,114 +47,80 @@ export default function ProfessionalTheme({ data, onEdit }) {
       : [];
 
   return (
-    <>
-      <E as="h1" path="name" value={data?.name} />
+    <div className="professional-theme-container">
+      <E as="h1" path="name" value={data?.name} className="resume-name-header" />
 
-      <div className="section-title">{t.personal}</div>
-      <div className="contact-container">
-        {data?.address && (
-          <div className="contact-info">
-            <strong>{t.address}</strong> <E path="address" value={data.address} />
-          </div>
-        )}
-        {data?.phone && (
-          <div className="contact-info">
-            <strong>{t.phone}</strong> <E path="phone" value={data.phone} />
-          </div>
-        )}
-        {data?.email && (
-          <div className="contact-info">
-            <strong>{t.email}</strong> <E path="email" value={data.email} />
-          </div>
-        )}
+      <div className="contact-line">
+        {data?.email && <span><E path="email" value={data.email} /></span>}
+        {data?.phone && <span> | <E path="phone" value={data.phone} /></span>}
+        {data?.address && <span> | <E path="address" value={data.address} /></span>}
       </div>
 
       {data?.summary && (
-        <>
-          <div className="section-title">{t.summary}</div>
-          <E as="div" className="professional-summary" path="summary" value={data.summary} markdown />
-        </>
-      )}
-
-      {hasItems(education) && (
-        <>
-          <div className="section-title">{t.education}</div>
-          <div className="professional-section-content">
-            {education.map((edu, idx) => (
-              <div key={`${edu.degree}-${idx}`} className="professional-row">
-                <div className="exp-date-loc">
-                  <E as="div" className="exp-date" path={`education.${idx}.date`} value={edu.date} />
-                  <E as="div" className="exp-date" path={`education.${idx}.location`} value={edu.location} />
-                </div>
-                <div className="professional-row-main">
-                  <E as="div" className="exp-role" path={`education.${idx}.degree`} value={edu.degree} />
-                  <E as="div" className="exp-company" path={`education.${idx}.institution`} value={edu.institution} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
+        <div className="section-compact">
+          <div className="section-title-compact">{t.summary}</div>
+          <E as="div" className="summary-text" path="summary" value={data.summary} markdown />
+        </div>
       )}
 
       {hasItems(experience) && (
-        <>
-          <div className="section-title">{t.experience}</div>
-          <div className="professional-section-content">
-            {experience.map((exp, idx) => (
-              <div key={`${exp.role}-${idx}`} className="professional-row">
-                <div className="exp-date-loc">
-                  <E as="div" className="exp-date" path={`experience.${idx}.date`} value={exp.date} />
-                  <E as="div" className="exp-date" path={`experience.${idx}.location`} value={exp.location} />
-                </div>
-                <div className="professional-row-main">
-                  <E as="div" className="exp-role" path={`experience.${idx}.role`} value={exp.role} />
-                  <E as="div" className="exp-company" path={`experience.${idx}.company`} value={exp.company} />
-                  {hasItems(exp.responsibilities) && (
-                    <ul className="professional-responsibilities">
-                      {exp.responsibilities.map((item, itemIdx) => (
-                        <li key={`${item}-${itemIdx}`}>
-                          <span className="professional-bullet">•</span>
-                          <E as="span" path={`experience.${idx}.responsibilities.${itemIdx}`} value={item} markdown />
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+        <div className="section-compact">
+          <div className="section-title-compact">{t.experience}</div>
+          {experience.map((exp, idx) => (
+            <div key={`${exp.role}-${idx}`} className="experience-item-compact">
+              <div className="item-header-compact">
+                <E as="strong" className="role-title" path={`experience.${idx}.role`} value={exp.role} />
+                <E as="span" className="item-date" path={`experience.${idx}.date`} value={exp.date} />
               </div>
-            ))}
-          </div>
-        </>
+              <div className="item-subheader-compact">
+                <E as="span" className="company-name" path={`experience.${idx}.company`} value={exp.company} />
+                <E as="span" className="item-location" path={`experience.${idx}.location`} value={exp.location} />
+              </div>
+              {hasItems(exp.responsibilities) && (
+                <ul className="bullet-list-compact">
+                  {exp.responsibilities.map((item, itemIdx) => (
+                    <li key={`${item}-${itemIdx}`}>
+                      <E as="span" path={`experience.${idx}.responsibilities.${itemIdx}`} value={item} markdown />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {hasItems(education) && (
+        <div className="section-compact">
+          <div className="section-title-compact">{t.education}</div>
+          {education.map((edu, idx) => (
+            <div key={`${edu.degree}-${idx}`} className="experience-item-compact">
+              <div className="item-header-compact">
+                <E as="strong" className="role-title" path={`education.${idx}.degree`} value={edu.degree} />
+                <E as="span" className="item-date" path={`education.${idx}.date`} value={edu.date} />
+              </div>
+              <div className="item-subheader-compact">
+                <E as="span" className="company-name" path={`education.${idx}.institution`} value={edu.institution} />
+                <E as="span" className="item-location" path={`education.${idx}.location`} value={edu.location} />
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {hasItems(skillsGroup) && (
-        <>
-          <div className="section-title">{t.skills}</div>
-          <div className="skills-grid">
+        <div className="section-compact">
+          <div className="section-title-compact">{t.skills}</div>
+          <div className="skills-container-compact">
             {skillsGroup.map((group, idx) => (
-              <div key={`${group.category}-${idx}`}>
-                <div className="skill-category">- {group.category}</div>
-                {group.items?.map((item, itemIdx) => {
-                  const parts = item.split(' (');
-                  if (parts.length > 1) {
-                    return (
-                      <div key={`${item}-${itemIdx}`} className="skill-item">
-                        <span className="skill-name">{parts[0]}</span>
-                        <strong>{parts[1].replace(')', '')}</strong>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div key={`${item}-${itemIdx}`} className="skill-item">
-                      {item}
-                    </div>
-                  );
-                })}
+              <div key={`${group.category}-${idx}`} className="skill-group-compact">
+                <strong>{group.category}: </strong>
+                <span>{group.items?.join(', ')}</span>
               </div>
             ))}
           </div>
-        </>
+        </div>
       )}
-    </>
+    </div>
   );
 }
