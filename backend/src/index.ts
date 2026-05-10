@@ -19,7 +19,8 @@ function getGenAI(requestKey?: string | null) {
   const key = requestKey || DEFAULT_GEMINI_API_KEY;
   if (!key) console.error("❌ Erro: Nenhuma GEMINI_API_KEY encontrada!");
   else console.log("✅ Usando GEMINI_API_KEY (iniciada com: " + key.substring(0, 4) + "...)");
-  return new GoogleGenerativeAI(key);
+  // Forçando v1 para maior estabilidade em produção
+  return new GoogleGenerativeAI(key, { apiVersion: "v1" });
 }
 
 function getOpenAI(requestKey?: string | null) {
