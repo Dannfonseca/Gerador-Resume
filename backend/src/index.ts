@@ -5,8 +5,8 @@ import { cors } from "@elysiajs/cors";
 import { resolve, extname } from "path";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import OpenAI from "openai";
-const pdfParse = require("pdf-parse");
-const mammoth = require("mammoth");
+import pdfParse from "pdf-parse";
+import mammoth from "mammoth";
 
 const DEFAULT_GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 const DEFAULT_OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
