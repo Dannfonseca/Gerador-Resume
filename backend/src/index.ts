@@ -147,7 +147,7 @@ const heritageResumeSchema = { type: SchemaType.OBJECT, properties: { ...commonR
 const DIST_DIR = resolve(import.meta.dir, "../../frontend/dist");
 
 const MIME_TYPES: Record<string, string> = {
-  ".html": "text/html", ".js": "application/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".woff": "font/woff", ".woff2": "font/woff2", ".ttf": "font/ttf", ".webp": "image/webp",
+  ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".woff": "font/woff", ".woff2": "font/woff2", ".ttf": "font/ttf", ".webp": "image/webp",
 };
 
 const app = new Elysia()
@@ -170,7 +170,7 @@ const app = new Elysia()
 
       const runGemini = async () => {
         const model = getGenAI(requestGeminiKey).getGenerativeModel({ 
-          model: "gemini-1.5-flash-latest", 
+          model: "gemini-1.5-flash", 
           generationConfig: { 
             temperature: 0.1,
             responseMimeType: "application/json"
@@ -210,7 +210,7 @@ const app = new Elysia()
       const { resumeText, jobDescription, missingKeywords } = body;
       const requestGeminiKey = headers["x-api-key"];
       const systemPrompt = `Sugira keywords ATS. Retorne JSON array.`;
-      const model = getGenAI(requestGeminiKey).getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+      const model = getGenAI(requestGeminiKey).getGenerativeModel({ model: "gemini-1.5-flash" });
       const result = await model.generateContent(`${systemPrompt}\nCV: ${resumeText}\nVaga: ${jobDescription}\nFaltantes: ${missingKeywords}`);
       const text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
       const match = text.match(/\[[\s\S]*\]/);
@@ -228,7 +228,7 @@ const app = new Elysia()
       const prompt = `Gere currículo professional e heritage em JSON. Nível: ${levelInfo.name}. Keywords: ${boostedKeywords}. CV: ${resumeText}. Vaga: ${jobDescriptionText}`;
 
       const runGemini = async () => {
-        const model = getGenAI(requestGeminiKey).getGenerativeModel({ model: "gemini-1.5-flash-latest", generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: { type: SchemaType.OBJECT, properties: { professional: professionalResumeSchema, heritage: heritageResumeSchema }, required: ["professional", "heritage"] } } });
+        const model = getGenAI(requestGeminiKey).getGenerativeModel({ model: "gemini-1.5-flash", generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: { type: SchemaType.OBJECT, properties: { professional: professionalResumeSchema, heritage: heritageResumeSchema }, required: ["professional", "heritage"] } } });
         const result = await model.generateContent(prompt);
         return JSON.parse(result.response.text());
       };
@@ -247,7 +247,7 @@ const app = new Elysia()
       // Optional Post-analysis
       let postAnalysis = null;
       try {
-        const model = getGenAI(requestGeminiKey).getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+        const model = getGenAI(requestGeminiKey).getGenerativeModel({ model: "gemini-1.5-flash" });
         const res = await model.generateContent(`${ANALYSIS_SYSTEM_PROMPT}\n\nCURRÍCULO GERADO:\n${JSON.stringify(validated.professional)}\nVAGA:\n${jobDescriptionText}`);
         const text = res.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
         const match = text.match(/\{[\s\S]*\}/);
@@ -261,7 +261,7 @@ const app = new Elysia()
   .post("/api/cover-letter", async ({ body, set, headers }) => {
     try {
       const { resumeText, jobDescription } = body;
-      const model = getGenAI(headers["x-api-key"]).getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+      const model = getGenAI(headers["x-api-key"]).getGenerativeModel({ model: "gemini-1.5-flash" });
       const result = await model.generateContent(`${COVER_LETTER_SYSTEM_PROMPT}\nCV: ${resumeText}\nVaga: ${jobDescription}`);
       const text = result.response.text().trim();
       return { success: true, text, latex: formatCoverLetterToLatex(text, true) };
@@ -271,7 +271,7 @@ const app = new Elysia()
   .post("/api/refine", async ({ body, set, headers }) => {
     try {
       const { text, jobDescription, instruction } = body;
-      const model = getGenAI(headers["x-api-key"]).getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+      const model = getGenAI(headers["x-api-key"]).getGenerativeModel({ model: "gemini-1.5-flash" });
       const result = await model.generateContent(`Refine este trecho: ${text}. Vaga: ${jobDescription}. Instrução: ${instruction}`);
       return { success: true, text: result.response.text().trim() };
     } catch (e) { set.status = 500; return { error: "Erro refino." }; }
