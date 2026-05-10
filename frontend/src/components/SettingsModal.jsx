@@ -71,7 +71,7 @@ export default function SettingsModal({ onClose }) {
 
         <p style={{ fontSize: '0.95rem', color: 'var(--secondary)', marginBottom: '24px', lineHeight: '1.5' }}>
           Suas chaves são armazenadas de forma <strong>encriptada</strong> localmente. 
-          O sistema tentará usar o Gemini primeiro e mudará para o OpenAI se necessário.
+          Você só precisa de <strong>uma delas</strong> para o sistema funcionar. O Gemini é o padrão, e o OpenAI serve como backup ou alternativa.
         </p>
 
         {/* Gemini Key */}

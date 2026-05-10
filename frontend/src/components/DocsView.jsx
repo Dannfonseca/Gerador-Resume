@@ -79,25 +79,23 @@ export default function DocsView({ onBack }) {
             <Key size={24} color="var(--tertiary)" /> 3. Configurando a Inteligência Artificial
           </h3>
           <p style={{ marginBottom: '20px' }}>
-            O ATS Pro é <strong>multimodelo</strong>. Ele usa o <strong>Google Gemini</strong> por padrão e possui <strong>OpenAI (ChatGPT)</strong> como fallback automático.
+            O ATS Pro é <strong>multimodelo</strong>. Você só precisa configurar <strong>uma das chaves abaixo</strong> para o sistema funcionar, mas pode configurar ambas para ter redundância.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div className="doc-card" style={{ ...cardStyle, borderLeft: '4px solid #8b5cf6' }}>
               <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <ShieldCheck size={18} color="#8b5cf6" /> Via Interface (Seguro)
+                <ShieldCheck size={18} color="#8b5cf6" /> Google Gemini (Padrão)
               </h4>
               <p style={{ fontSize: '0.85rem' }}>
-                Clique no ícone de <strong>Configurações</strong> no sidebar. Suas chaves ficam salvas de forma <strong>encriptada</strong> no seu navegador.
+                Recomendado para uso gratuito. Se configurado, o sistema usará este como motor principal.
               </p>
             </div>
-            <div className="doc-card" style={{ ...cardStyle, borderLeft: '4px solid var(--primary)' }}>
+            <div className="doc-card" style={{ ...cardStyle, borderLeft: '4px solid #10a37f' }}>
               <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <Terminal size={18} /> Via Arquivo .env
+                <Key size={18} color="#10a37f" /> OpenAI GPT (Fallback)
               </h4>
               <p style={{ fontSize: '0.85rem' }}>
-                Crie um arquivo <code>.env</code> na pasta <code>backend</code> com:<br/>
-                <code>GEMINI_API_KEY=...</code><br/>
-                <code>OPENAI_API_KEY=...</code>
+                Pode ser usado como motor principal ou como backup automático caso o Gemini falhe.
               </p>
             </div>
           </div>
