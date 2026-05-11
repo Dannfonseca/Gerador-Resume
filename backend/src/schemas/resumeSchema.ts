@@ -66,8 +66,14 @@ export const StrengthSchema = z.object({
   description: z.string()
 });
 
+export const AtsBreakdownSchema = z.object({
+  parseability: z.number().min(0).max(60),
+  contentQuality: z.number().min(0).max(40)
+});
+
 export const AnalysisResponseSchema = z.object({
   atsScore: z.number().min(0).max(100),
+  atsBreakdown: AtsBreakdownSchema.optional().nullable(),
   probability: z.enum(["Alta", "Média", "Baixa"]),
   screeningReason: z.string(),
   matchScore: z.number().min(0).max(100).nullable(),

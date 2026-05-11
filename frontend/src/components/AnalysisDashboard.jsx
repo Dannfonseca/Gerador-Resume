@@ -56,6 +56,39 @@ export default function AnalysisDashboard({ analysis, onOptimize }) {
             {getProbabilityIcon(probability)}
             <span>Leitura ATS: <strong>{probability}</strong></span>
           </div>
+
+          {/* ATS Breakdown Bar */}
+          {analysis.atsBreakdown && (
+            <div className="ats-breakdown">
+              <div className="ats-breakdown-row">
+                <span className="ats-breakdown-label">📐 Parseabilidade</span>
+                <div className="ats-breakdown-bar-track">
+                  <div 
+                    className="ats-breakdown-bar-fill" 
+                    style={{ 
+                      width: `${(analysis.atsBreakdown.parseability / 60) * 100}%`,
+                      backgroundColor: getScoreColor(Math.round(analysis.atsBreakdown.parseability / 60 * 100))
+                    }} 
+                  />
+                </div>
+                <span className="ats-breakdown-value">{analysis.atsBreakdown.parseability}/60</span>
+              </div>
+              <div className="ats-breakdown-row">
+                <span className="ats-breakdown-label">📝 Qualidade</span>
+                <div className="ats-breakdown-bar-track">
+                  <div 
+                    className="ats-breakdown-bar-fill" 
+                    style={{ 
+                      width: `${(analysis.atsBreakdown.contentQuality / 40) * 100}%`,
+                      backgroundColor: getScoreColor(Math.round(analysis.atsBreakdown.contentQuality / 40 * 100))
+                    }} 
+                  />
+                </div>
+                <span className="ats-breakdown-value">{analysis.atsBreakdown.contentQuality}/40</span>
+              </div>
+            </div>
+          )}
+
           <p className="score-reason">{screeningReason}</p>
         </div>
 

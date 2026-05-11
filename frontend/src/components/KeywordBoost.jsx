@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Loader2, Zap, Info } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2, Zap, Info, Sparkles } from 'lucide-react';
 
 const CATEGORY_LABELS = {
   hard_skill: 'Hard Skill',
@@ -26,6 +26,17 @@ const PRIORITY_LABELS = {
   low: '⬇ Baixa',
 };
 
+const COMBO_LABELS = {
+  tech: { label: 'Tecnologia & T.I.', color: '#2563eb' },
+  architecture: { label: 'Arquitetura & Urbanismo', color: '#78716c' },
+  marketing: { label: 'Marketing & Comunicação', color: '#ec4899' },
+  engineering: { label: 'Engenharia', color: '#f59e0b' },
+  healthcare: { label: 'Saúde', color: '#ef4444' },
+  legal: { label: 'Direito & Compliance', color: '#6366f1' },
+  finance: { label: 'Finanças & Contabilidade', color: '#059669' },
+  education: { label: 'Educação & Docência', color: '#8b5cf6' },
+};
+
 /**
  * KeywordBoost — Intermediate screen between Level Select and Generation.
  * Shows AI-suggested keywords that the user can toggle on/off before generation.
@@ -36,6 +47,7 @@ export default function KeywordBoost({
   onGenerate,
   onBack,
   isGenerating,
+  activeCombo,
 }) {
   const [toggledKeywords, setToggledKeywords] = useState({});
 
@@ -87,11 +99,30 @@ export default function KeywordBoost({
 
   if (!suggestions || suggestions.length === 0) {
     return (
-      <div className="keyword-boost-empty">
-        <p>Nenhuma sugestão disponível. Prossiga para a geração.</p>
-        <button className="btn-primary" onClick={() => onGenerate([])}>
-          <Zap size={18} /> Gerar Currículo
+      <div className="keyword-boost-empty" style={{ textAlign: 'center', padding: '60px 24px' }}>
+        <p style={{ color: 'var(--secondary)', marginBottom: '20px' }}>
+          Nenhuma sugestão disponível. Prossiga para a geração.
+        </p>
+        <button 
+          className="btn-primary" 
+          onClick={() => onGenerate([])}
+          disabled={isGenerating}
+          style={{ justifyContent: 'center', padding: '16px 32px', fontSize: '1rem' }}
+        >
+          {isGenerating ? (
+            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
+              <Loader2 size={18} />
+            </motion.div>
+          ) : (
+            <Zap size={18} />
+          )}
+          {isGenerating ? 'Reescrevendo Currículo...' : 'Gerar Currículo'}
         </button>
+        {isGenerating && (
+          <p style={{ color: 'var(--secondary)', marginTop: '16px', fontSize: '0.85rem' }}>
+            Isso pode levar até 60 segundos. A IA está reescrevendo seu currículo...
+          </p>
+        )}
       </div>
     );
   }
@@ -148,6 +179,24 @@ export default function KeywordBoost({
           Desative as que não fazem sentido para o seu perfil.
         </p>
       </header>
+
+      {/* Career Combo Active Banner */}
+      <AnimatePresence>
+        {activeCombo && COMBO_LABELS[activeCombo] && (
+          <motion.div
+            className="keyword-combo-banner"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{ borderLeftColor: COMBO_LABELS[activeCombo].color }}
+          >
+            <Sparkles size={16} style={{ color: COMBO_LABELS[activeCombo].color, flexShrink: 0 }} />
+            <span>
+              Modo <strong style={{ color: COMBO_LABELS[activeCombo].color }}>{COMBO_LABELS[activeCombo].label}</strong> ativo — keywords priorizadas para este setor.
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="keyword-boost-info">
         <Info size={16} />

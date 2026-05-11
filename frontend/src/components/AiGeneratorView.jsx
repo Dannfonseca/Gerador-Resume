@@ -10,6 +10,7 @@ import LevelSelector from './LevelSelector';
 import CoverLetterPanel from './CoverLetterPanel';
 import ScoreComparison from './ScoreComparison';
 import KeywordBoost from './KeywordBoost';
+import CareerComboSelector from './CareerComboSelector';
 import { RESUME_LAYOUTS, normalizeGeneratedResumes } from '../lib/resumePayload';
 import { getApiKey } from '../lib/apiKey';
 import '../styles/resume.css';
@@ -35,6 +36,9 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
   const [editModal, setEditModal] = useState(null);
   const [refiningText, setRefiningText] = useState('');
   const [isRefining, setIsRefining] = useState(false);
+
+  // Career Combo State
+  const [selectedCombo, setSelectedCombo] = useState(null);
 
   // Pipeline State (currentStep comes from props)
   const [analysisData, setAnalysisData] = useState(null);
@@ -74,6 +78,7 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
       formData.append('resume', resumeFile);
       if (jobDescText) formData.append('jobDescriptionText', jobDescText);
       if (jobDescFile) formData.append('jobDescriptionFile', jobDescFile);
+      if (selectedCombo) formData.append('careerCombo', selectedCombo);
 
       const res = await fetch('/api/analyze', {
         method: 'POST',
@@ -105,6 +110,7 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
       if (boostedKeywords.length > 0) {
         formData.append('boostedKeywords', boostedKeywords.join(', '));
       }
+      if (selectedCombo) formData.append('careerCombo', selectedCombo);
 
       const res = await fetch('/api/generate', {
         method: 'POST',
@@ -150,14 +156,19 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
         ? `Pontos fortes: ${(analysisData.strengths || []).map(s => s.title).join(', ')}. Keywords encontradas: ${(analysisData.foundKeywords || []).join(', ')}.`
         : '';
 
+      // Build request body, filtering out null/undefined values
+      const requestBody = {
+        resumeText: resumeSummary || 'Currículo enviado para análise',
+        jobDescription: jobDescText || (jobDescFile ? 'Vaga fornecida como imagem (ver análise anterior)' : ''),
+        missingKeywords: (analysisData?.missingKeywords || []).join(', '),
+      };
+      // Only include careerCombo if it has a value (avoids 422 from null)
+      if (selectedCombo) requestBody.careerCombo = selectedCombo;
+
       const res = await fetch('/api/suggest-keywords', {
         method: 'POST',
         headers: getHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({
-          resumeText: resumeSummary,
-          jobDescription: jobDescText,
-          missingKeywords: (analysisData?.missingKeywords || []).join(', ')
-        })
+        body: JSON.stringify(requestBody)
       });
       const data = await res.json();
       if (data.success) {
@@ -185,6 +196,7 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
     setInteractionMode('none');
     setCurrentStep('input');
     setShowLatex(false);
+    setSelectedCombo(null);
   };
 
   const updateDataByPath = (path, newValue) => {
@@ -300,6 +312,9 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
           </header>
 
           <form onSubmit={handleAnalyze} style={{ marginTop: '30px' }}>
+            {/* Career Combo Selector */}
+            <CareerComboSelector value={selectedCombo} onChange={setSelectedCombo} />
+
             <div style={{ marginBottom: '24px' }}>
               <h3 style={{ marginBottom: '12px' }}>1. Seu Currículo Atual (PDF ou Word)</h3>
               <div {...getResumeProps()} style={dropzoneStyle}>
@@ -417,6 +432,7 @@ export default function AiGeneratorView({ currentStep, setCurrentStep }) {
             onGenerate={handleGenerateWithKeywords}
             onBack={() => setCurrentStep('level')}
             isGenerating={generateMutation.isPending}
+            activeCombo={selectedCombo}
           />
           {generateMutation.isError && (
             <p style={{ color: 'red', marginTop: '15px', textAlign: 'center' }}>

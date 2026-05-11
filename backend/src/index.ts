@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia";
 import { GeminiResponseSchema, AnalysisResponseSchema } from "./schemas/resumeSchema";
 import { formatResumeToLatex, formatCoverLetterToLatex } from "./services/latexService";
+import { getComboContext, getPublicCombos } from "./data/careerCombos";
 import { cors } from "@elysiajs/cors";
 import { resolve, extname } from "path";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
@@ -65,43 +66,98 @@ async function extractResumeText(resume: File, set: any): Promise<string | null>
 // PROMPTS
 const ANALYSIS_SYSTEM_PROMPT = `
 Você é o motor de análise de currículos de uma plataforma de recrutamento de nível enterprise.
-Sua função é executar DUAS análises SEPARADAS e INDEPENDENTES:
+Sua função é executar DUAS análises SEPARADAS e INDEPENDENTES.
 
-## ANÁLISE 1: ATS SCORE (Compatibilidade Técnica com Sistemas ATS)
-Esta análise avalia se o currículo será PARSEADO CORRETAMENTE por sistemas ATS.
-IMPORTANTE: Sistemas ATS reais NÃO conseguem ler layouts complexos, duas colunas, fotos ou sidebars.
+═══════════════════════════════════════════════════
+## ANÁLISE 1: ATS SCORE (0 a 100 pontos)
+═══════════════════════════════════════════════════
 
-### PONTUAÇÃO BASE: Comece com 100 pontos e SUBTRAIA conforme problemas encontrados:
+O ATS Score é composto por DUAS CAMADAS. Some os pontos de cada camada.
 
-**PENALIZAÇÕES CRÍTICAS (layout que QUEBRA parsing do ATS):**
-- Layout em DUAS COLUNAS ou mais: **-30 pontos**
-- Possui FOTO/IMAGEM do candidato: **-15 pontos**
-- SIDEBAR com informações: **-20 pontos**
-- Tabelas ou caixas de texto: **-15 pontos**
-- Ícones ou elementos gráficos decorativos: **-10 pontos**
+### CAMADA A — PARSEABILIDADE DO LAYOUT (máximo 60 pontos)
+Avalia se o ATS conseguirá LER o currículo.
+Comece com 60 e SUBTRAIA:
 
-**PENALIZAÇÕES MODERADAS (conteúdo subótimo):**
-- Falta seção de Resumo/Objetivo: **-8 pontos**
-- Falta seção de Experiência clara: **-10 pontos**
-- Falta informações de contato (email/telefone): **-8 pontos**
+| Problema | Penalização |
+|----------|-------------|
+| Layout em DUAS COLUNAS ou mais | -30 pts |
+| SIDEBAR com informações | -25 pts |
+| FOTO/IMAGEM do candidato | -15 pts |
+| Tabelas ou caixas de texto | -10 pts |
+| Ícones ou elementos gráficos decorativos | -5 pts |
 
-REGRA DE OURO: Se o currículo tem LAYOUT EM DUAS COLUNAS ou SIDEBAR, o score NUNCA pode ser acima de 55.
+REGRA: Layout limpo, 1 coluna, sem gráficos → 60/60.
 
-## ANÁLISE 2: MATCH SCORE (Compatibilidade com a Vaga)
-Retorne matchScore, matchAnalysis, foundKeywords e missingKeywords baseado na vaga.
+### CAMADA B — QUALIDADE DO CONTEÚDO ATS (máximo 40 pontos)
+Comece com 0 e SOME conforme o que está presente:
 
-OUTPUT JSON:
+| Critério | Pontos |
+|----------|--------|
+| Seção de Experiência com cargo + empresa/contexto + datas | +12 pts |
+| Bullet points com resultados mensuráveis (números, %, métricas) | +8 pts |
+| Resumo/Objetivo profissional com keywords relevantes | +7 pts |
+| Contato completo (email + telefone) | +3 pts |
+| Skills categorizadas e específicas | +4 pts |
+| Verbos de ação no início dos bullet points | +4 pts |
+| Formatação consistente e hierarquia clara | +2 pts |
+
+Notas:
+- Projetos pessoais bem descritos com tecnologias e resultados contam como experiência (até +10 dos 12 pts).
+- Se NÃO há métricas mas os bullet points são descritivos e específicos, conceda até +4 dos 8 pts.
+- Se o candidato não tem experiência formal (só projetos/acadêmico), a Camada B pode chegar até 28/40.
+
+atsScore = Camada A + Camada B
+
+### probability:
+- "Alta" se atsScore >= 80
+- "Média" se atsScore >= 55
+- "Baixa" se atsScore < 55
+
+Retorne também atsBreakdown com os valores de cada camada.
+
+═══════════════════════════════════════════════════
+## ANÁLISE 2: MATCH SCORE (0 a 100 pontos)
+═══════════════════════════════════════════════════
+
+⚠️ Se uma vaga foi fornecida, matchScore DEVE ser um número (0-100). NUNCA null.
+⚠️ Se NÃO há vaga ("Não fornecida"), retorne null.
+
+### CRITÉRIOS DE PONTUAÇÃO (pesos indicativos):
+- **Keywords da vaga** (~30%): Quantas keywords relevantes da vaga aparecem no CV?
+- **Experiência na área** (~25%): O candidato demonstra experiência prática (profissional ou projetos relevantes) na área da vaga?
+- **Ferramentas e tecnologias** (~20%): As tecnologias/frameworks do CV coincidem com a vaga?
+- **Nível de senioridade** (~10%): O perfil do candidato é compatível com o nível da vaga?
+- **Formação** (~10%): A formação é relevante?
+- **Soft skills** (~5%): Há soft skills alinhadas com a cultura da empresa?
+
+### CALIBRAÇÃO (referência para consistência):
+- Profissional experiente + keywords + tech certas = **80-95**
+- Profissional com 2-3 anos + boa cobertura = **60-75**
+- Recém-formado com tech certas + projetos relevantes = **45-60**
+- Área diferente da vaga = **10-30**
+
+### matchAnalysis:
+Escreva um RESUMO BREVE (2-3 frases) sobre a compatibilidade geral. NÃO detalhe a pontuação critério por critério.
+
+═══════════════════════════════════════════════════
+## OUTPUT JSON
+═══════════════════════════════════════════════════
+
 {
   "atsScore": number,
+  "atsBreakdown": {
+    "parseability": number,
+    "contentQuality": number
+  },
   "probability": "Alta" | "Média" | "Baixa",
-  "screeningReason": "string",
+  "screeningReason": "breve explicação do score ATS",
   "matchScore": number | null,
-  "matchAnalysis": "string | null",
-  "foundKeywords": ["string"],
-  "missingKeywords": ["string"],
+  "matchAnalysis": "resumo breve da compatibilidade (2-3 frases) | null",
+  "foundKeywords": ["keywords da vaga encontradas no CV"],
+  "missingKeywords": ["keywords da vaga NÃO encontradas no CV"],
   "strengths": [{ "title": "string", "description": "string" }],
-  "keywordOps": ["string"],
-  "tips": ["string"]
+  "keywordOps": ["oportunidades de melhoria"],
+  "tips": ["dicas práticas"]
 }
 `;
 
@@ -161,13 +217,20 @@ const app = new Elysia()
   .get("/favicon.svg", () => Bun.file(resolve(DIST_DIR, "favicon.svg")))
   .get("/icons.svg", () => Bun.file(resolve(DIST_DIR, "icons.svg")))
 
+  // Career Combos — lista de setores disponíveis
+  .get("/api/career-combos", () => {
+    return { success: true, combos: getPublicCombos() };
+  })
+
   .post("/api/analyze", async ({ body, set, headers }) => {
     try {
-      const { resume, jobDescriptionText, jobDescriptionFile } = body;
+      const { resume, jobDescriptionText, jobDescriptionFile, careerCombo } = body;
       const requestGeminiKey = headers["x-api-key"];
       const requestOpenaiKey = headers["x-openai-key"];
       const resumeText = await extractResumeText(resume, set);
       if (!resumeText) return { error: "Currículo inválido." };
+
+      const comboContext = getComboContext(careerCombo);
 
       const runGemini = async () => {
         const model = getGenAI(requestGeminiKey).getGenerativeModel({ 
@@ -178,10 +241,22 @@ const app = new Elysia()
           } 
         });
         const contents: any[] = [];
-        if (jobDescriptionFile && jobDescriptionFile.type.startsWith('image/')) {
+        const hasJobImage = jobDescriptionFile && jobDescriptionFile.type.startsWith('image/');
+        if (hasJobImage) {
           contents.push({ inlineData: { data: Buffer.from(await jobDescriptionFile.arrayBuffer()).toString("base64"), mimeType: jobDescriptionFile.type } });
         }
-        contents.push(`${ANALYSIS_SYSTEM_PROMPT}\n\nCURRÍCULO:\n${resumeText}\n\nVAGA:\n${jobDescriptionText || "Não fornecida"}`);
+        
+        // Determine job description context for the prompt
+        let jobContext: string;
+        if (jobDescriptionText) {
+          jobContext = jobDescriptionText;
+        } else if (hasJobImage) {
+          jobContext = "A vaga foi fornecida como IMAGEM acima. Extraia o texto da vaga a partir da imagem e use-o para realizar a análise de Match Score, foundKeywords e missingKeywords. O matchScore DEVE ser calculado.";
+        } else {
+          jobContext = "Não fornecida";
+        }
+        
+        contents.push(`${ANALYSIS_SYSTEM_PROMPT}\n\n${comboContext}\n\nCURRÍCULO:\n${resumeText}\n\nVAGA:\n${jobContext}`);
         const result = await model.generateContent(contents);
         const text = result.response.text().trim();
         return JSON.parse(text);
@@ -190,7 +265,7 @@ const app = new Elysia()
       const runOpenAI = async () => {
         const openai = getOpenAI(requestOpenaiKey);
         if (!openai) throw new Error("OpenAI not set");
-        const res = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "system", content: ANALYSIS_SYSTEM_PROMPT }, { role: "user", content: `CURRÍCULO:\n${resumeText}\nVAGA:\n${jobDescriptionText || "Não fornecida"}` }], response_format: { type: "json_object" } });
+        const res = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "system", content: `${ANALYSIS_SYSTEM_PROMPT}\n\n${comboContext}` }, { role: "user", content: `CURRÍCULO:\n${resumeText}\nVAGA:\n${jobDescriptionText || "Não fornecida"}` }], response_format: { type: "json_object" } });
         return JSON.parse(res.choices[0].message.content || "{}");
       };
 
@@ -204,14 +279,17 @@ const app = new Elysia()
         details: e.message || "Erro desconhecido"
       }; 
     }
-  }, { body: t.Object({ resume: t.File(), jobDescriptionText: t.Optional(t.String()), jobDescriptionFile: t.Optional(t.File()) }) })
+  }, { body: t.Object({ resume: t.File(), jobDescriptionText: t.Optional(t.String()), jobDescriptionFile: t.Optional(t.File()), careerCombo: t.Optional(t.String()) }) })
 
   .post("/api/suggest-keywords", async ({ body, set, headers }) => {
     try {
-      const { resumeText, jobDescription, missingKeywords } = body;
+      const { resumeText, jobDescription, missingKeywords, careerCombo } = body;
       const requestGeminiKey = headers["x-api-key"];
+      const comboContext = getComboContext(careerCombo);
       const systemPrompt = `Você é um especialista em ATS (Applicant Tracking Systems) e otimização de currículos.
 Analise o currículo e a vaga fornecidos. Identifique palavras-chave e expressões que o candidato deveria incluir no currículo para aumentar a compatibilidade com a vaga.
+
+${comboContext}
 
 Retorne um JSON array com objetos no seguinte formato EXATO:
 [
@@ -225,11 +303,12 @@ Retorne um JSON array com objetos no seguinte formato EXATO:
 
 Regras:
 - Prioridade "high": keywords que aparecem explicitamente na vaga e estão ausentes no currículo
-- Prioridade "medium": keywords inferidas da vaga ou do setor
+- Prioridade "medium": keywords inferidas da vaga ou do setor${comboContext ? ' (PRIORIZE as keywords do setor informado acima)' : ''}
 - Prioridade "low": keywords complementares que agregam valor
 - Retorne entre 15 e 40 keywords
 - Inclua uma mistura de categorias
 - O campo "reason" deve ter no máximo 2 frases
+${comboContext ? '- Keywords genéricas de soft skills devem representar NO MÁXIMO 15-20% do total\n- PRIORIZE ferramentas, certificações e termos técnicos do setor informado' : ''}
 - Retorne APENAS o JSON array, sem markdown, sem explicações adicionais`;
       const model = getGenAI(requestGeminiKey).getGenerativeModel({ 
         model: "gemini-2.5-flash",
@@ -243,16 +322,17 @@ Regras:
       const match = text.match(/\[[\s\S]*\]/);
       return { success: true, suggestions: JSON.parse(match ? match[0] : text) };
     } catch (e) { set.status = 500; return { error: "Erro keywords." }; }
-  }, { body: t.Object({ resumeText: t.String(), jobDescription: t.Optional(t.String()), missingKeywords: t.Optional(t.String()) }) })
+  }, { body: t.Object({ resumeText: t.String(), jobDescription: t.Optional(t.String()), missingKeywords: t.Optional(t.String()), careerCombo: t.Optional(t.String()) }) })
 
   .post("/api/generate", async ({ body, set, headers }) => {
     try {
-      const { resume, jobDescriptionText, level, boostedKeywords } = body;
+      const { resume, jobDescriptionText, level, boostedKeywords, careerCombo } = body;
       const requestGeminiKey = headers["x-api-key"];
       const requestOpenaiKey = headers["x-openai-key"];
       const resumeText = await extractResumeText(resume, set);
       const levelInfo = LEVEL_INSTRUCTIONS[level || "balanced"];
-      const prompt = `Gere currículo professional e heritage em JSON. Nível: ${levelInfo.name}. Keywords: ${boostedKeywords}. CV: ${resumeText}. Vaga: ${jobDescriptionText}`;
+      const comboContext = getComboContext(careerCombo);
+      const prompt = `Gere currículo professional e heritage em JSON. Nível: ${levelInfo.name}. Keywords: ${boostedKeywords}. ${comboContext ? `\n\n${comboContext}` : ''} CV: ${resumeText}. Vaga: ${jobDescriptionText}`;
 
       const runGemini = async () => {
         const model = getGenAI(requestGeminiKey).getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: { type: SchemaType.OBJECT, properties: { professional: professionalResumeSchema, heritage: heritageResumeSchema }, required: ["professional", "heritage"] } } });
@@ -274,16 +354,21 @@ Regras:
       // Optional Post-analysis
       let postAnalysis = null;
       try {
-        const model = getGenAI(requestGeminiKey).getGenerativeModel({ model: "gemini-2.5-flash" });
-        const res = await model.generateContent(`${ANALYSIS_SYSTEM_PROMPT}\n\nCURRÍCULO GERADO:\n${JSON.stringify(validated.professional)}\nVAGA:\n${jobDescriptionText}`);
-        const text = res.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-        const match = text.match(/\{[\s\S]*\}/);
-        postAnalysis = AnalysisResponseSchema.parse(JSON.parse(match ? match[0] : text));
-      } catch (e) {}
+        const model = getGenAI(requestGeminiKey).getGenerativeModel({ 
+          model: "gemini-2.5-flash",
+          generationConfig: {
+            temperature: 0.1,
+            responseMimeType: "application/json"
+          }
+        });
+        const res = await model.generateContent(`${ANALYSIS_SYSTEM_PROMPT}\n\n${comboContext}\n\nIMPORTANTE: O campo matchScore DEVE ser preenchido com um número de 0 a 100. NUNCA retorne null para matchScore quando uma vaga foi fornecida.\n\nCURRÍCULO GERADO:\n${JSON.stringify(validated.professional)}\nVAGA:\n${jobDescriptionText || "Não fornecida"}`);
+        const text = res.response.text().trim();
+        postAnalysis = AnalysisResponseSchema.parse(JSON.parse(text));
+      } catch (e) { console.error("Post-analysis error:", e); }
 
       return { success: true, data: validated, latex, postAnalysis };
     } catch (e) { console.error(e); set.status = 500; return { error: "Erro geração." }; }
-  }, { body: t.Object({ resume: t.File(), jobDescriptionText: t.Optional(t.String()), jobDescriptionFile: t.Optional(t.File()), level: t.Optional(t.String()), boostedKeywords: t.Optional(t.String()) }) })
+  }, { body: t.Object({ resume: t.File(), jobDescriptionText: t.Optional(t.String()), jobDescriptionFile: t.Optional(t.File()), level: t.Optional(t.String()), boostedKeywords: t.Optional(t.String()), careerCombo: t.Optional(t.String()) }) })
 
   .post("/api/cover-letter", async ({ body, set, headers }) => {
     try {
