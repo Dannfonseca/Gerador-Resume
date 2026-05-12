@@ -168,6 +168,34 @@ export default {
     copied: 'Carta copiada!',
     error: 'Erro ao gerar carta.',
   },
+  models: {
+    title: 'Cérebro da IA',
+    desc: 'Escolha o provedor e a potência do processamento.',
+    gemini: {
+      flash8b: { name: 'Gemini 1.5 Flash-8B', tag: 'ULTRA-LEVE', desc: 'O mais rápido de todos, ideal para checagens simples.' },
+      flash15: { name: 'Gemini 1.5 Flash', tag: 'ÁGIL', desc: 'Rápido e eficiente para a maioria dos currículos.' },
+      flash2: { name: 'Gemini 2.0 Flash', tag: 'MODERNO', desc: 'Nova geração balanceada entre velocidade e lógica.' },
+      pro15: { name: 'Gemini 1.5 Pro', tag: 'RECOMENDADO', desc: 'Excelente em análise de contexto e estrutura.' },
+      pro15v2: { name: 'Gemini 1.5 Pro-002', tag: 'OTIMIZADO', desc: 'Versão refinada para escrita técnica e complexa.' },
+      pro2: { name: 'Gemini 2.0 Pro Exp', tag: 'TOPO DE LINHA', desc: 'Máximo raciocínio experimental do Google.' },
+    },
+    openai: {
+      gpt35: { name: 'GPT-3.5 Turbo', tag: 'BÁSICO', desc: 'Modelo clássico, útil para tarefas muito simples.' },
+      gpt4om: { name: 'GPT-4o mini', tag: 'EFICIENTE', desc: 'Rápido e inteligente para ajustes pontuais.' },
+      gpt4t: { name: 'GPT-4 Turbo', tag: 'PROFISSIONAL', desc: 'Análise robusta com histórico comprovado.' },
+      gpt4o: { name: 'GPT-4o', tag: 'RECOMENDADO', desc: 'A inteligência mais versátil para qualquer currículo.' },
+      o1m: { name: 'o1-mini', tag: 'LÓGICA PURA', desc: 'Focado em raciocínio matemático e lógico.' },
+      o1p: { name: 'o1-preview', tag: 'CIENTÍFICO', desc: 'O nível mais alto de raciocínio da OpenAI.' },
+    },
+    anthropic: {
+      haiku3: { name: 'Claude 3 Haiku', tag: 'ECONÔMICO', desc: 'Simples e direto para revisões rápidas.' },
+      haiku35: { name: 'Claude 3.5 Haiku', tag: 'VELOZ', desc: 'Inteligência surpreendente com tempo de resposta mínimo.' },
+      sonnet3: { name: 'Claude 3 Sonnet', tag: 'ESTÁVEL', desc: 'Bom equilíbrio para currículos corporativos.' },
+      sonnet35: { name: 'Claude 3.5 Sonnet', tag: '⭐ RECOMENDADO', desc: 'A escrita mais humana e natural disponível hoje.' },
+      opus3: { name: 'Claude 3 Opus', tag: 'CRIATIVO', desc: 'Máxima profundidade e escrita poética.' },
+      claude21: { name: 'Claude 2.1', tag: 'LEGADO', desc: 'Precisão técnica para currículos acadêmicos.' },
+    }
+  },
   common: {
     error: 'Erro',
     loading: 'Carregando...',

@@ -6,6 +6,7 @@ import { cors } from "@elysiajs/cors";
 import { resolve, extname } from "path";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
 
@@ -23,11 +24,17 @@ function getGenAI(requestKey?: string | null) {
   return new GoogleGenerativeAI(key);
 }
 
-function getOpenAI(requestKey?: string | null) {
-  const key = requestKey || DEFAULT_OPENAI_API_KEY;
-  if (!key) return null;
-  return new OpenAI({ apiKey: key });
-}
+const getOpenAI = (key?: string) => {
+  const k = key || process.env.OPENAI_API_KEY;
+  if (!k) return null;
+  return new OpenAI({ apiKey: k });
+};
+
+const getAnthropic = (key?: string) => {
+  const k = key || process.env.ANTHROPIC_API_KEY;
+  if (!k) return null;
+  return new Anthropic({ apiKey: k });
+};
 
 async function withFallback<T>(
   geminiFn: () => Promise<T>,
@@ -232,44 +239,58 @@ const app = new Elysia()
 
       const comboContext = getComboContext(careerCombo);
 
+      const modelId = body.modelId || "gemini-1.5-flash";
+      const isOpenAI = modelId.startsWith('gpt-') || modelId.startsWith('o1-');
+      const isClaude = modelId.startsWith('claude-');
+
       const runGemini = async () => {
         const model = getGenAI(requestGeminiKey).getGenerativeModel({ 
-          model: "gemini-2.5-flash", 
-          generationConfig: { 
-            temperature: 0.1,
-            responseMimeType: "application/json"
-          } 
+          model: modelId, 
+          generationConfig: { temperature: 0.1, responseMimeType: "application/json" } 
         });
         const contents: any[] = [];
         const hasJobImage = jobDescriptionFile && jobDescriptionFile.type.startsWith('image/');
         if (hasJobImage) {
           contents.push({ inlineData: { data: Buffer.from(await jobDescriptionFile.arrayBuffer()).toString("base64"), mimeType: jobDescriptionFile.type } });
         }
-        
-        // Determine job description context for the prompt
-        let jobContext: string;
-        if (jobDescriptionText) {
-          jobContext = jobDescriptionText;
-        } else if (hasJobImage) {
-          jobContext = "A vaga foi fornecida como IMAGEM acima. Extraia o texto da vaga a partir da imagem e use-o para realizar a análise de Match Score, foundKeywords e missingKeywords. O matchScore DEVE ser calculado.";
-        } else {
-          jobContext = "Não fornecida";
-        }
-        
+        let jobContext = jobDescriptionText || (hasJobImage ? "Extraia texto da imagem para análise." : "Não fornecida");
         contents.push(`${ANALYSIS_SYSTEM_PROMPT}\n\nIDIOMA DA ANÁLISE: ${body.language || 'Português (BR)'}\n\n${comboContext}\n\nCURRÍCULO:\n${resumeText}\n\nVAGA:\n${jobContext}`);
         const result = await model.generateContent(contents);
-        const text = result.response.text().trim();
-        return JSON.parse(text);
+        return JSON.parse(result.response.text().trim());
       };
 
       const runOpenAI = async () => {
         const openai = getOpenAI(requestOpenaiKey);
         if (!openai) throw new Error("OpenAI not set");
-        const res = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "system", content: `${ANALYSIS_SYSTEM_PROMPT}\n\n${comboContext}` }, { role: "user", content: `CURRÍCULO:\n${resumeText}\nVAGA:\n${jobDescriptionText || "Não fornecida"}` }], response_format: { type: "json_object" } });
+        const res = await openai.chat.completions.create({ 
+          model: modelId, 
+          messages: [
+            { role: "system", content: `${ANALYSIS_SYSTEM_PROMPT}\n\n${comboContext}\n\nIDIOMA DA ANÁLISE: ${body.language || 'Português (BR)'}` }, 
+            { role: "user", content: `CURRÍCULO:\n${resumeText}\nVAGA:\n${jobDescriptionText || "Não fornecida"}` }
+          ], 
+          response_format: { type: "json_object" } 
+        });
         return JSON.parse(res.choices[0].message.content || "{}");
       };
 
-      const analysis = await withFallback(runGemini, runOpenAI, !!requestOpenaiKey);
+      const runClaude = async () => {
+        const anthropic = getAnthropic(requestAnthropicKey);
+        if (!anthropic) throw new Error("Anthropic not set");
+        const res = await anthropic.messages.create({
+          model: modelId,
+          max_tokens: 4096,
+          system: `${ANALYSIS_SYSTEM_PROMPT}\n\n${comboContext}\n\nIDIOMA DA ANÁLISE: ${body.language || 'Português (BR)'}`,
+          messages: [{ role: "user", content: `Analise este currículo em relação à vaga fornecida e retorne APENAS o JSON.\n\nCURRÍCULO:\n${resumeText}\n\nVAGA:\n${jobDescriptionText || "Não fornecida"}` }]
+        });
+        const text = (res.content[0] as any).text;
+        return JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || text);
+      };
+
+      let analysis;
+      if (isClaude) analysis = await runClaude();
+      else if (isOpenAI) analysis = await runOpenAI();
+      else analysis = await runGemini();
+
       return { success: true, data: AnalysisResponseSchema.parse(analysis) };
     } catch (e: any) { 
       console.error("💥 ERRO CRÍTICO NA ANÁLISE:", e);
@@ -279,7 +300,7 @@ const app = new Elysia()
         details: e.message || "Erro desconhecido"
       }; 
     }
-  }, { body: t.Object({ resume: t.File(), jobDescriptionText: t.Optional(t.String()), jobDescriptionFile: t.Optional(t.File()), careerCombo: t.Optional(t.String()), language: t.Optional(t.String()) }) })
+  }, { body: t.Object({ resume: t.File(), jobDescriptionText: t.Optional(t.String()), jobDescriptionFile: t.Optional(t.File()), careerCombo: t.Optional(t.String()), language: t.Optional(t.String()), modelId: t.Optional(t.String()) }) })
 
   .post("/api/suggest-keywords", async ({ body, set, headers }) => {
     try {
@@ -310,19 +331,48 @@ Regras:
 - O campo "reason" deve ter no máximo 2 frases
 ${comboContext ? '- Keywords genéricas de soft skills devem representar NO MÁXIMO 15-20% do total\n- PRIORIZE ferramentas, certificações e termos técnicos do setor informado' : ''}
 - Retorne APENAS o JSON array, sem markdown, sem explicações adicionais`;
-      const model = getGenAI(requestGeminiKey).getGenerativeModel({ 
-        model: "gemini-2.5-flash",
-        generationConfig: {
-          temperature: 0.3,
-          responseMimeType: "application/json"
-        }
-      });
-      const result = await model.generateContent(`${systemPrompt}\n\nIDIOMA PARA AS SUGESTÕES: ${body.language || 'Português (BR)'}\n\nCURRÍCULO DO CANDIDATO:\n${resumeText}\n\nDESCRIÇÃO DA VAGA:\n${jobDescription || "Não fornecida"}\n\nKEYWORDS FALTANTES IDENTIFICADAS NA ANÁLISE:\n${missingKeywords || "Nenhuma"}`);
-      const text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-      const match = text.match(/\[[\s\S]*\]/);
-      return { success: true, suggestions: JSON.parse(match ? match[0] : text) };
-    } catch (e) { set.status = 500; return { error: "Erro keywords." }; }
-  }, { body: t.Object({ resumeText: t.String(), jobDescription: t.Optional(t.String()), missingKeywords: t.Optional(t.String()), careerCombo: t.Optional(t.String()), language: t.Optional(t.String()) }) })
+      const modelId = body.modelId || "gemini-1.5-flash";
+      const isOpenAI = modelId.startsWith('gpt-') || modelId.startsWith('o1-');
+      const isClaude = modelId.startsWith('claude-');
+
+      const runGemini = async () => {
+        const model = getGenAI(requestGeminiKey).getGenerativeModel({ 
+          model: modelId,
+          generationConfig: { temperature: 0.3, responseMimeType: "application/json" }
+        });
+        const result = await model.generateContent(`${systemPrompt}\n\nIDIOMA PARA AS SUGESTÕES: ${body.language || 'Português (BR)'}\n\nCURRÍCULO DO CANDIDATO:\n${resumeText}\n\nDESCRIÇÃO DA VAGA:\n${jobDescription || "Não fornecida"}\n\nKEYWORDS FALTANTES IDENTIFICADAS NA ANÁLISE:\n${missingKeywords || "Nenhuma"}`);
+        return result.response.text();
+      };
+
+      const runOpenAI = async () => {
+        const openai = getOpenAI(requestOpenaiKey);
+        if (!openai) throw new Error("OpenAI not set");
+        const res = await openai.chat.completions.create({
+          model: modelId,
+          messages: [{ role: "system", content: systemPrompt }, { role: "user", content: `CURRÍCULO:\n${resumeText}\nVAGA:\n${jobDescription || "Não fornecida"}` }],
+          response_format: { type: "json_object" }
+        });
+        return res.choices[0].message.content || "[]";
+      };
+
+      const runClaude = async () => {
+        const anthropic = getAnthropic(requestAnthropicKey);
+        if (!anthropic) throw new Error("Anthropic not set");
+        const res = await anthropic.messages.create({
+          model: modelId,
+          max_tokens: 2048,
+          system: systemPrompt,
+          messages: [{ role: "user", content: `Retorne apenas o JSON array das sugestões de keywords.\n\nCURRÍCULO:\n${resumeText}\nVAGA:\n${jobDescription || "Não fornecida"}` }]
+        });
+        return (res.content[0] as any).text;
+      };
+
+      const text = isClaude ? await runClaude() : (isOpenAI ? await runOpenAI() : await runGemini());
+      const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const match = cleaned.match(/\[[\s\S]*\]/);
+      return { success: true, suggestions: JSON.parse(match ? match[0] : cleaned) };
+    } catch (e) { console.error(e); set.status = 500; return { error: "Erro keywords." }; }
+  }, { body: t.Object({ resumeText: t.String(), jobDescription: t.Optional(t.String()), missingKeywords: t.Optional(t.String()), careerCombo: t.Optional(t.String()), language: t.Optional(t.String()), modelId: t.Optional(t.String()) }) })
 
   .post("/api/generate", async ({ body, set, headers }) => {
     try {
@@ -345,8 +395,12 @@ ${resumeText}
 DESCRIÇÃO DA VAGA: 
 ${jobDescriptionText || 'Não fornecida'}`;
 
+      const modelId = body.modelId || "gemini-1.5-flash";
+      const isOpenAI = modelId.startsWith('gpt-') || modelId.startsWith('o1-');
+      const isClaude = modelId.startsWith('claude-');
+
       const runGemini = async () => {
-        const model = getGenAI(requestGeminiKey).getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: { type: SchemaType.OBJECT, properties: { professional: professionalResumeSchema, heritage: heritageResumeSchema }, required: ["professional", "heritage"] } } });
+        const model = getGenAI(requestGeminiKey).getGenerativeModel({ model: modelId, generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: { type: SchemaType.OBJECT, properties: { professional: professionalResumeSchema, heritage: heritageResumeSchema }, required: ["professional", "heritage"] } } });
         const result = await model.generateContent(prompt);
         return JSON.parse(result.response.text());
       };
@@ -354,11 +408,27 @@ ${jobDescriptionText || 'Não fornecida'}`;
       const runOpenAI = async () => {
         const openai = getOpenAI(requestOpenaiKey);
         if (!openai) throw new Error("OpenAI not set");
-        const res = await openai.chat.completions.create({ model: "gpt-4o", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" } });
+        const res = await openai.chat.completions.create({ 
+          model: modelId, 
+          messages: [{ role: "user", content: prompt }], 
+          response_format: { type: "json_object" } 
+        });
         return JSON.parse(res.choices[0].message.content || "{}");
       };
 
-      const data = await withFallback(runGemini, runOpenAI, !!requestOpenaiKey);
+      const runClaude = async () => {
+        const anthropic = getAnthropic(requestAnthropicKey);
+        if (!anthropic) throw new Error("Anthropic not set");
+        const res = await anthropic.messages.create({
+          model: modelId,
+          max_tokens: 4096,
+          messages: [{ role: "user", content: `Gere o currículo otimizado no formato JSON conforme solicitado abaixo:\n\n${prompt}` }]
+        });
+        const text = (res.content[0] as any).text;
+        return JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || text);
+      };
+
+      const data = isClaude ? await runClaude() : (isOpenAI ? await runOpenAI() : await runGemini());
       const validated = GeminiResponseSchema.parse(data);
       const latex = { professional: formatResumeToLatex(validated.professional as any), heritage: formatResumeToLatex(validated.heritage as any) };
 
@@ -366,7 +436,7 @@ ${jobDescriptionText || 'Não fornecida'}`;
       let postAnalysis = null;
       try {
         const model = getGenAI(requestGeminiKey).getGenerativeModel({ 
-          model: "gemini-2.5-flash",
+          model: body.modelId || "gemini-1.5-flash",
           generationConfig: {
             temperature: 0.1,
             responseMimeType: "application/json"
@@ -379,7 +449,7 @@ ${jobDescriptionText || 'Não fornecida'}`;
 
       return { success: true, data: validated, latex, postAnalysis };
     } catch (e) { console.error(e); set.status = 500; return { error: "Erro geração." }; }
-  }, { body: t.Object({ resume: t.File(), jobDescriptionText: t.Optional(t.String()), jobDescriptionFile: t.Optional(t.File()), level: t.Optional(t.String()), boostedKeywords: t.Optional(t.String()), careerCombo: t.Optional(t.String()), language: t.Optional(t.String()) }) })
+  }, { body: t.Object({ resume: t.File(), jobDescriptionText: t.Optional(t.String()), jobDescriptionFile: t.Optional(t.File()), level: t.Optional(t.String()), boostedKeywords: t.Optional(t.String()), careerCombo: t.Optional(t.String()), language: t.Optional(t.String()), modelId: t.Optional(t.String()) }) })
 
   .post("/api/cover-letter", async ({ body, set, headers }) => {
     try {

@@ -8,6 +8,7 @@ const LEVEL_COLORS = { conservative: '#16a34a', balanced: '#ca8a04', aggressive:
 
 /**
  * WizardStepLevel — Step 3: Aggressiveness level selection.
+ * AI Model selection was moved to Settings.
  */
 export default function WizardStepLevel({
   aggressivenessLevel, setAggressivenessLevel,
@@ -23,6 +24,7 @@ export default function WizardStepLevel({
         <p style={{ color: 'var(--secondary)' }}>{t('level.subtitle')}</p>
       </header>
 
+      {/* Intervention Level */}
       <div className="level-selector" style={{ marginTop: '24px' }}>
         <div className="level-selector-header">
           <h3>{t('level.selectorTitle')}</h3>

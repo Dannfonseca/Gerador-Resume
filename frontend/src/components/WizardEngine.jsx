@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getApiKey } from '../lib/apiKey';
+import { getApiKey, getAiModel } from '../lib/apiKey';
 import { normalizeGeneratedResumes } from '../lib/resumePayload';
 import { useLanguage } from '../i18n/LanguageContext';
 import WizardProgressBar from './WizardProgressBar';
@@ -67,6 +67,7 @@ export default function WizardEngine({ currentStep, setCurrentStep }) {
       if (jobDescFile) formData.append('jobDescriptionFile', jobDescFile);
       if (selectedCombo) formData.append('careerCombo', selectedCombo);
       formData.append('language', language);
+      formData.append('modelId', getAiModel());
 
       const res = await fetch('/api/analyze', {
         method: 'POST', headers: getHeaders(), body: formData,
@@ -93,6 +94,7 @@ export default function WizardEngine({ currentStep, setCurrentStep }) {
       if (boostedKeywords.length > 0) formData.append('boostedKeywords', boostedKeywords.join(', '));
       if (selectedCombo) formData.append('careerCombo', selectedCombo);
       formData.append('language', language);
+      formData.append('modelId', getAiModel());
 
       const res = await fetch('/api/generate', {
         method: 'POST', headers: getHeaders(), body: formData,
@@ -130,6 +132,7 @@ export default function WizardEngine({ currentStep, setCurrentStep }) {
         jobDescription: jobDescText || (jobDescFile ? 'Job provided as image' : ''),
         missingKeywords: (analysisData?.missingKeywords || []).join(', '),
         language: language,
+        modelId: getAiModel(),
       };
       if (selectedCombo) requestBody.careerCombo = selectedCombo;
 

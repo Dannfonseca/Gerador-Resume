@@ -6,6 +6,7 @@
     "dev": "bun run --watch src/index.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.95.2",
     "@elysiajs/cors": "^1.4.2",
     "@elysiajs/static": "^1.4.10",
     "@google/generative-ai": "^0.24.1",

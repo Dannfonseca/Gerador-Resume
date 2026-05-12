@@ -41,3 +41,11 @@ export const getApiKey = (service) => {
 export const clearApiKey = (service) => {
   localStorage.removeItem(`${service}_api_key`);
 };
+
+export const saveAiModel = (modelId) => {
+  localStorage.setItem('preferred_ai_model', modelId);
+};
+
+export const getAiModel = () => {
+  return localStorage.getItem('preferred_ai_model') || 'gemini-1.5-pro';
+};
