@@ -1,0 +1,482 @@
+/* ============================================================
+   WIZARD SYSTEM — Mobile-First Design
+   ============================================================ */
+
+/* ====== LANGUAGE SWITCHER ====== */
+.lang-switcher {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: white;
+  border: 1px solid var(--border-light);
+  margin-bottom: 20px;
+}
+
+@media (min-width: 768px) {
+  .lang-switcher {
+    padding: 14px 20px;
+    margin-bottom: 28px;
+  }
+}
+
+.lang-switcher-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.lang-switcher-icon {
+  color: var(--secondary);
+}
+
+.lang-switcher-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--secondary);
+}
+
+.lang-switcher-options {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.lang-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid var(--border-light);
+  cursor: pointer;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--secondary);
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.lang-option:hover {
+  border-color: var(--secondary);
+  color: var(--primary);
+}
+
+.lang-option.active {
+  border-color: var(--tertiary);
+  color: var(--primary);
+  background: rgba(184, 66, 46, 0.04);
+}
+
+.lang-option-flag {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.lang-option-label {
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .lang-option-label {
+    display: inline;
+  }
+}
+
+.lang-option-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--tertiary);
+}
+
+/* ====== WIZARD PROGRESS BAR (Mobile) ====== */
+.wizard-progress {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 16px;
+  background: var(--neutral);
+  border-bottom: 1px solid var(--border-light);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+@media (min-width: 1024px) {
+  .wizard-progress {
+    display: none;
+  }
+}
+
+.wizard-progress-steps {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  position: relative;
+}
+
+/* Track line behind the dots */
+.wizard-progress-track {
+  position: absolute;
+  top: 50%;
+  left: 24px;
+  right: 24px;
+  height: 2px;
+  background: var(--border-light);
+  transform: translateY(-50%);
+  z-index: 0;
+}
+
+.wizard-progress-fill {
+  height: 100%;
+  background: var(--tertiary);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wizard-progress-dot-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.wizard-progress-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border-light);
+  background: var(--neutral);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--border-light);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: default;
+}
+
+.wizard-progress-dot.completed {
+  border-color: var(--tertiary);
+  background: var(--tertiary);
+  color: white;
+  cursor: pointer;
+}
+
+.wizard-progress-dot.active {
+  border-color: var(--tertiary);
+  background: var(--tertiary);
+  color: white;
+  box-shadow: 0 0 0 4px rgba(184, 66, 46, 0.15);
+  transform: scale(1.1);
+}
+
+.wizard-progress-dot-label {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: var(--border-light);
+  margin-top: 6px;
+  text-align: center;
+  transition: color 0.3s ease;
+  white-space: nowrap;
+}
+
+.wizard-progress-dot-wrapper.active .wizard-progress-dot-label,
+.wizard-progress-dot-wrapper.completed .wizard-progress-dot-label {
+  color: var(--primary);
+}
+
+@keyframes wizardPulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(184, 66, 46, 0.15); }
+  50% { box-shadow: 0 0 0 8px rgba(184, 66, 46, 0.08); }
+}
+
+.wizard-progress-dot.active {
+  animation: wizardPulse 2s ease-in-out infinite;
+}
+
+/* ====== WIZARD STEP TRANSITIONS ====== */
+.wizard-step-container {
+  position: relative;
+  overflow: hidden;
+  min-height: 400px;
+}
+
+.wizard-step-content {
+  width: 100%;
+}
+
+/* ====== WIZARD NAVIGATION BAR ====== */
+.wizard-nav {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-light);
+}
+
+.wizard-nav .btn-primary {
+  flex: 1;
+  justify-content: center;
+  padding: 16px;
+  font-size: 1rem;
+}
+
+/* ====== ENHANCED SIDEBAR STEPPER (Desktop) ====== */
+@media (min-width: 1024px) {
+  .wizard-step.clickable {
+    cursor: pointer;
+  }
+
+  .wizard-step.clickable:hover .wizard-step-label {
+    color: var(--tertiary);
+  }
+
+  .wizard-step.clickable:hover .wizard-step-icon.completed {
+    box-shadow: 0 0 0 3px rgba(184, 66, 46, 0.12);
+  }
+
+  .wizard-connector {
+    transition: background 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .wizard-step-icon {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* ====== STEP-SPECIFIC ANIMATIONS ====== */
+
+/* Dropzone enhanced */
+.dropzone-area {
+  border: 1px solid var(--secondary);
+  padding: 32px 16px;
+  text-align: center;
+  cursor: pointer;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  transition: all 0.25s ease;
+}
+
+@media (min-width: 768px) {
+  .dropzone-area {
+    padding: 40px;
+    min-height: 150px;
+  }
+}
+
+.dropzone-area:hover {
+  border-color: var(--tertiary);
+  background: rgba(184, 66, 46, 0.02);
+}
+
+.dropzone-area.has-file {
+  border-color: var(--tertiary);
+  border-style: solid;
+  background: rgba(184, 66, 46, 0.03);
+}
+
+.dropzone-area p {
+  font-size: 0.85rem;
+  color: var(--secondary);
+  margin: 0;
+}
+
+.dropzone-area .file-name {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* Textarea enhanced */
+.wizard-textarea {
+  width: 100%;
+  min-height: 110px;
+  padding: 16px;
+  border: 1px solid var(--secondary);
+  background: transparent;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--primary);
+  transition: border-color 0.2s ease;
+}
+
+.wizard-textarea:focus {
+  outline: none;
+  border-color: var(--tertiary);
+}
+
+/* ====== SCORE COUNTER ANIMATION ====== */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.score-value-animated {
+  animation: countUp 0.6s ease-out forwards;
+}
+
+/* ====== STAGGER REVEAL ====== */
+.stagger-item {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: staggerIn 0.4s ease-out forwards;
+}
+
+@keyframes staggerIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ====== BUTTON SHIMMER ====== */
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.btn-shimmer:hover::after {
+  left: 100%;
+}
+
+/* ====== SKELETON LOADING ====== */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--border-light) 25%,
+    white 50%,
+    var(--border-light) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 2px;
+}
+
+.skeleton-text {
+  height: 14px;
+  margin-bottom: 8px;
+  width: 80%;
+}
+
+.skeleton-title {
+  height: 24px;
+  margin-bottom: 12px;
+  width: 60%;
+}
+
+.skeleton-block {
+  height: 120px;
+  width: 100%;
+}
+
+/* ====== STEP INPUT SECTION SPACING ====== */
+.wizard-input-section {
+  margin-bottom: 24px;
+}
+
+.wizard-input-section h3 {
+  margin-bottom: 12px;
+}
+
+.wizard-input-hint {
+  font-size: 0.85rem;
+  color: var(--secondary);
+  margin-bottom: 10px;
+}
+
+/* ====== IMPORT SECTION ====== */
+.wizard-import-section {
+  margin-top: 30px;
+  border-top: 1px solid var(--border-light);
+  padding-top: 20px;
+  text-align: center;
+}
+
+.wizard-import-hint {
+  color: var(--secondary);
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+}
+
+.wizard-import-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 10px 20px;
+  border: 1px solid var(--secondary);
+  background: transparent;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--primary);
+  transition: all 0.2s ease;
+}
+
+.wizard-import-label:hover {
+  border-color: var(--primary);
+  background: rgba(26, 28, 30, 0.03);
+}
+
+/* ====== RESULT TOOLBAR RESPONSIVE ====== */
+.result-toolbar-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (min-width: 768px) {
+  .result-toolbar-grid {
+    gap: 10px;
+  }
+}
+
+.result-toolbar-grid .btn-secondary,
+.result-toolbar-grid .btn-primary {
+  font-size: 0.78rem;
+  padding: 10px 14px;
+}
+
+@media (min-width: 768px) {
+  .result-toolbar-grid .btn-secondary,
+  .result-toolbar-grid .btn-primary {
+    font-size: 0.82rem;
+    padding: 12px 18px;
+  }
+}

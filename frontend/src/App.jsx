@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { LanguageProvider } from './i18n/LanguageContext';
 import Sidebar from './components/Sidebar';
-import AiGeneratorView from './components/AiGeneratorView';
+import WizardEngine from './components/WizardEngine';
 import DocsView from './components/DocsView';
 import './App.css';
 
 const queryClient = new QueryClient();
 
 function AppContent() {
-  const [currentStep, setCurrentStep] = useState('input');
-  const [activeTab, setActiveTab] = useState('app'); // 'app' or 'docs'
-  const [prevStep, setPrevStep] = useState('input');
+  const [currentStep, setCurrentStep] = useState('upload');
+  const [activeTab, setActiveTab] = useState('app');
+  const [prevStep, setPrevStep] = useState('upload');
 
   const handleSwitchTab = (tab) => {
     if (tab === 'docs') {
@@ -21,16 +22,17 @@ function AppContent() {
 
   return (
     <div className="app-container">
-      <Sidebar 
-        currentStep={currentStep} 
+      <Sidebar
+        currentStep={currentStep}
         activeTab={activeTab}
-        onSwitchTab={handleSwitchTab} 
+        onSwitchTab={handleSwitchTab}
+        onNavigateStep={setCurrentStep}
       />
       <main className="main-content">
         {activeTab === 'docs' ? (
           <DocsView onBack={() => setActiveTab('app')} />
         ) : (
-          <AiGeneratorView currentStep={currentStep} setCurrentStep={setCurrentStep} />
+          <WizardEngine currentStep={currentStep} setCurrentStep={setCurrentStep} />
         )}
       </main>
     </div>
@@ -40,7 +42,9 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppContent />
+      <LanguageProvider>
+        <AppContent />
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

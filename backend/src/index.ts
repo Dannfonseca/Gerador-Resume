@@ -256,7 +256,7 @@ const app = new Elysia()
           jobContext = "Não fornecida";
         }
         
-        contents.push(`${ANALYSIS_SYSTEM_PROMPT}\n\n${comboContext}\n\nCURRÍCULO:\n${resumeText}\n\nVAGA:\n${jobContext}`);
+        contents.push(`${ANALYSIS_SYSTEM_PROMPT}\n\nIDIOMA DA ANÁLISE: ${body.language || 'Português (BR)'}\n\n${comboContext}\n\nCURRÍCULO:\n${resumeText}\n\nVAGA:\n${jobContext}`);
         const result = await model.generateContent(contents);
         const text = result.response.text().trim();
         return JSON.parse(text);
@@ -279,7 +279,7 @@ const app = new Elysia()
         details: e.message || "Erro desconhecido"
       }; 
     }
-  }, { body: t.Object({ resume: t.File(), jobDescriptionText: t.Optional(t.String()), jobDescriptionFile: t.Optional(t.File()), careerCombo: t.Optional(t.String()) }) })
+  }, { body: t.Object({ resume: t.File(), jobDescriptionText: t.Optional(t.String()), jobDescriptionFile: t.Optional(t.File()), careerCombo: t.Optional(t.String()), language: t.Optional(t.String()) }) })
 
   .post("/api/suggest-keywords", async ({ body, set, headers }) => {
     try {
@@ -317,22 +317,33 @@ ${comboContext ? '- Keywords genéricas de soft skills devem representar NO MÁX
           responseMimeType: "application/json"
         }
       });
-      const result = await model.generateContent(`${systemPrompt}\n\nCURRÍCULO DO CANDIDATO:\n${resumeText}\n\nDESCRIÇÃO DA VAGA:\n${jobDescription || "Não fornecida"}\n\nKEYWORDS FALTANTES IDENTIFICADAS NA ANÁLISE:\n${missingKeywords || "Nenhuma"}`);
+      const result = await model.generateContent(`${systemPrompt}\n\nIDIOMA PARA AS SUGESTÕES: ${body.language || 'Português (BR)'}\n\nCURRÍCULO DO CANDIDATO:\n${resumeText}\n\nDESCRIÇÃO DA VAGA:\n${jobDescription || "Não fornecida"}\n\nKEYWORDS FALTANTES IDENTIFICADAS NA ANÁLISE:\n${missingKeywords || "Nenhuma"}`);
       const text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
       const match = text.match(/\[[\s\S]*\]/);
       return { success: true, suggestions: JSON.parse(match ? match[0] : text) };
     } catch (e) { set.status = 500; return { error: "Erro keywords." }; }
-  }, { body: t.Object({ resumeText: t.String(), jobDescription: t.Optional(t.String()), missingKeywords: t.Optional(t.String()), careerCombo: t.Optional(t.String()) }) })
+  }, { body: t.Object({ resumeText: t.String(), jobDescription: t.Optional(t.String()), missingKeywords: t.Optional(t.String()), careerCombo: t.Optional(t.String()), language: t.Optional(t.String()) }) })
 
   .post("/api/generate", async ({ body, set, headers }) => {
     try {
-      const { resume, jobDescriptionText, level, boostedKeywords, careerCombo } = body;
+      const { resume, jobDescriptionText, level, boostedKeywords, careerCombo, language } = body;
       const requestGeminiKey = headers["x-api-key"];
       const requestOpenaiKey = headers["x-openai-key"];
       const resumeText = await extractResumeText(resume, set);
       const levelInfo = LEVEL_INSTRUCTIONS[level || "balanced"];
       const comboContext = getComboContext(careerCombo);
-      const prompt = `Gere currículo professional e heritage em JSON. Nível: ${levelInfo.name}. Keywords: ${boostedKeywords}. ${comboContext ? `\n\n${comboContext}` : ''} CV: ${resumeText}. Vaga: ${jobDescriptionText}`;
+      const prompt = `Gere currículo professional e heritage em JSON no idioma ${language || 'Português (BR)'}. 
+Nível de Intervenção: ${levelInfo.name} (${levelInfo.focus}).
+Instrução Importante: PRESERVE a profundidade profissional. Não resuma demais as experiências; se o currículo original possui detalhes relevantes, métricas e responsabilidades específicas, mantenha-os e apenas refine o tom e incorpore as keywords de forma natural.
+
+Keywords a Otimizar: ${boostedKeywords}. 
+Setor: ${comboContext ? comboContext : 'Geral'}.
+
+CONTEÚDO ORIGINAL DO CV: 
+${resumeText}
+
+DESCRIÇÃO DA VAGA: 
+${jobDescriptionText || 'Não fornecida'}`;
 
       const runGemini = async () => {
         const model = getGenAI(requestGeminiKey).getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: { type: SchemaType.OBJECT, properties: { professional: professionalResumeSchema, heritage: heritageResumeSchema }, required: ["professional", "heritage"] } } });
@@ -361,24 +372,24 @@ ${comboContext ? '- Keywords genéricas de soft skills devem representar NO MÁX
             responseMimeType: "application/json"
           }
         });
-        const res = await model.generateContent(`${ANALYSIS_SYSTEM_PROMPT}\n\n${comboContext}\n\nIMPORTANTE: O campo matchScore DEVE ser preenchido com um número de 0 a 100. NUNCA retorne null para matchScore quando uma vaga foi fornecida.\n\nCURRÍCULO GERADO:\n${JSON.stringify(validated.professional)}\nVAGA:\n${jobDescriptionText || "Não fornecida"}`);
+        const res = await model.generateContent(`${ANALYSIS_SYSTEM_PROMPT}\n\nIDIOMA DA ANÁLISE: ${body.language || 'Português (BR)'}\n\n${comboContext}\n\nIMPORTANTE: O campo matchScore DEVE ser preenchido com um número de 0 a 100. NUNCA retorne null para matchScore quando uma vaga foi fornecida.\n\nCURRÍCULO GERADO:\n${JSON.stringify(validated.professional)}\nVAGA:\n${jobDescriptionText || "Não fornecida"}`);
         const text = res.response.text().trim();
         postAnalysis = AnalysisResponseSchema.parse(JSON.parse(text));
       } catch (e) { console.error("Post-analysis error:", e); }
 
       return { success: true, data: validated, latex, postAnalysis };
     } catch (e) { console.error(e); set.status = 500; return { error: "Erro geração." }; }
-  }, { body: t.Object({ resume: t.File(), jobDescriptionText: t.Optional(t.String()), jobDescriptionFile: t.Optional(t.File()), level: t.Optional(t.String()), boostedKeywords: t.Optional(t.String()), careerCombo: t.Optional(t.String()) }) })
+  }, { body: t.Object({ resume: t.File(), jobDescriptionText: t.Optional(t.String()), jobDescriptionFile: t.Optional(t.File()), level: t.Optional(t.String()), boostedKeywords: t.Optional(t.String()), careerCombo: t.Optional(t.String()), language: t.Optional(t.String()) }) })
 
   .post("/api/cover-letter", async ({ body, set, headers }) => {
     try {
-      const { resumeText, jobDescription } = body;
+      const { resumeText, jobDescription, language } = body;
       const model = getGenAI(headers["x-api-key"]).getGenerativeModel({ model: "gemini-2.5-flash" });
-      const result = await model.generateContent(`${COVER_LETTER_SYSTEM_PROMPT}\nCV: ${resumeText}\nVaga: ${jobDescription}`);
+      const result = await model.generateContent(`${COVER_LETTER_SYSTEM_PROMPT}\nIDIOMA: ${language || 'Português (BR)'}\nCV: ${resumeText}\nVaga: ${jobDescription}`);
       const text = result.response.text().trim();
       return { success: true, text, latex: formatCoverLetterToLatex(text, true) };
     } catch (e) { set.status = 500; return { error: "Erro cover letter." }; }
-  }, { body: t.Object({ resumeText: t.String(), jobDescription: t.Optional(t.String()) }) })
+  }, { body: t.Object({ resumeText: t.String(), jobDescription: t.Optional(t.String()), language: t.Optional(t.String()) }) })
 
   .post("/api/refine", async ({ body, set, headers }) => {
     try {

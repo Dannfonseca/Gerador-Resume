@@ -1,12 +1,14 @@
 import { motion } from 'framer-motion';
 import { Shield, Target, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 /**
  * ScoreComparison — Shows a before/after comparison of ATS and Match scores.
  * Displayed in the results view after generation completes.
  */
 export default function ScoreComparison({ before, after }) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
 
   if (!before && !after) return null;
@@ -58,7 +60,7 @@ export default function ScoreComparison({ before, after }) {
       >
         <div className="score-comparison-title">
           <Shield size={18} />
-          <span>Relatório ATS — Antes vs Depois</span>
+          <span>{t('comparison.title')}</span>
           {after && (
             <span className="score-comparison-badge" style={{ backgroundColor: getScoreColor(after.atsScore) }}>
               ATS {after.atsScore}/100
@@ -78,12 +80,12 @@ export default function ScoreComparison({ before, after }) {
           <div className="score-comparison-row">
             <div className="score-comparison-label">
               <Shield size={16} />
-              ATS Score
+              {t('analysis.atsScore')}
             </div>
             <div className="score-comparison-values">
               {before && (
                 <div className="score-comparison-cell">
-                  <span className="score-comparison-cell-label">Antes</span>
+                  <span className="score-comparison-cell-label">{t('comparison.before')}</span>
                   <span className="score-comparison-cell-value" style={{ color: getScoreColor(before.atsScore) }}>
                     {before.atsScore}
                   </span>
@@ -94,7 +96,7 @@ export default function ScoreComparison({ before, after }) {
               )}
               {after && (
                 <div className="score-comparison-cell">
-                  <span className="score-comparison-cell-label">Depois</span>
+                  <span className="score-comparison-cell-label">{t('comparison.after')}</span>
                   <span className="score-comparison-cell-value" style={{ color: getScoreColor(after.atsScore) }}>
                     {after.atsScore}
                   </span>
@@ -109,12 +111,12 @@ export default function ScoreComparison({ before, after }) {
             <div className="score-comparison-row">
               <div className="score-comparison-label">
                 <Target size={16} />
-                Match Score
+                {t('analysis.matchScore')}
               </div>
               <div className="score-comparison-values">
                 {before?.matchScore != null && (
                   <div className="score-comparison-cell">
-                    <span className="score-comparison-cell-label">Antes</span>
+                    <span className="score-comparison-cell-label">{t('comparison.before')}</span>
                     <span className="score-comparison-cell-value" style={{ color: getScoreColor(before.matchScore) }}>
                       {before.matchScore}
                     </span>
@@ -125,7 +127,7 @@ export default function ScoreComparison({ before, after }) {
                 )}
                 {after?.matchScore != null && (
                   <div className="score-comparison-cell">
-                    <span className="score-comparison-cell-label">Depois</span>
+                    <span className="score-comparison-cell-label">{t('comparison.after')}</span>
                     <span className="score-comparison-cell-value" style={{ color: getScoreColor(after.matchScore) }}>
                       {after.matchScore}
                     </span>
@@ -138,18 +140,18 @@ export default function ScoreComparison({ before, after }) {
 
           {/* Probability */}
           <div className="score-comparison-row">
-            <div className="score-comparison-label">Leitura ATS</div>
+            <div className="score-comparison-label">{t('comparison.atsReading')}</div>
             <div className="score-comparison-values">
               {before && (
                 <div className="score-comparison-cell">
-                  <span className="score-comparison-cell-label">Antes</span>
+                  <span className="score-comparison-cell-label">{t('comparison.before')}</span>
                   <span className="score-comparison-cell-tag">{before.probability}</span>
                 </div>
               )}
               {(before && after) && <div className="score-comparison-arrow">→</div>}
               {after && (
                 <div className="score-comparison-cell">
-                  <span className="score-comparison-cell-label">Depois</span>
+                  <span className="score-comparison-cell-label">{t('comparison.after')}</span>
                   <span className="score-comparison-cell-tag">{after.probability}</span>
                 </div>
               )}
@@ -159,14 +161,14 @@ export default function ScoreComparison({ before, after }) {
           {/* Post-analysis details */}
           {after?.screeningReason && (
             <div className="score-comparison-detail">
-              <strong>Análise Pós-Geração:</strong> {after.screeningReason}
+              <strong>{t('comparison.analysisTitle')}</strong> {after.screeningReason}
             </div>
           )}
 
           {/* Keywords gained */}
           {after?.foundKeywords?.length > 0 && (
             <div className="score-comparison-keywords">
-              <strong>Keywords no Currículo Final:</strong>
+              <strong>{t('comparison.finalKeywords')}</strong>
               <div className="keywords-chips" style={{ marginTop: '8px' }}>
                 {after.foundKeywords.map((kw, i) => (
                   <span key={i} className="keyword-chip found">{kw}</span>
@@ -177,7 +179,7 @@ export default function ScoreComparison({ before, after }) {
 
           {after?.missingKeywords?.length > 0 && (
             <div className="score-comparison-keywords">
-              <strong>Ainda faltantes:</strong>
+              <strong>{t('comparison.stillMissing')}</strong>
               <div className="keywords-chips" style={{ marginTop: '8px' }}>
                 {after.missingKeywords.map((kw, i) => (
                   <span key={i} className="keyword-chip missing">{kw}</span>
@@ -188,7 +190,7 @@ export default function ScoreComparison({ before, after }) {
 
           {after?.tips?.length > 0 && (
             <div className="score-comparison-tips">
-              <strong>Recomendações finais:</strong>
+              <strong>{t('comparison.recommendations')}</strong>
               <ul className="tips-list" style={{ marginTop: '8px' }}>
                 {after.tips.map((tip, i) => (
                   <li key={i}>{tip}</li>
