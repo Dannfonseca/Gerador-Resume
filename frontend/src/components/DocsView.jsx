@@ -1,4 +1,4 @@
-import { FileText, Target, CheckSquare, CheckCircle, Key, Zap, Settings } from 'lucide-react';
+import { FileText, Target, CheckSquare, CheckCircle, Key, Zap, Settings, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function DocsView({ onBack }) {
@@ -34,7 +34,7 @@ export default function DocsView({ onBack }) {
             <div className="doc-card">
               <h4 className="doc-card-header"><Key size={18} /> Chaves de API</h4>
               <p className="doc-card-text">
-                O sistema precisa de uma conexão com as IAs para funcionar. Adicione sua chave do <strong>Google Gemini</strong> (gratuita), <strong>OpenAI</strong> ou <strong>Anthropic</strong> nas configurações. Suas chaves ficam salvas localmente no seu navegador e não são armazenadas no servidor.
+                O sistema precisa de uma conexão com as IAs para funcionar. Adicione sua chave do <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" style={{color: 'var(--primary)', fontWeight: 'bold'}}>Google Gemini</a> (gratuita), <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" style={{color: 'var(--primary)', fontWeight: 'bold'}}>OpenAI</a> ou <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" style={{color: 'var(--primary)', fontWeight: 'bold'}}>Anthropic</a> nas configurações. Suas chaves ficam salvas localmente no seu navegador e não são armazenadas no servidor.
               </p>
             </div>
             <div className="doc-card">
@@ -42,6 +42,21 @@ export default function DocsView({ onBack }) {
               <p className="doc-card-text">
                 Você pode alternar livremente entre mais de 18 modelos de Inteligência Artificial. Recomendamos os modelos mais modernos e rápidos (como o Gemini 1.5 Flash ou GPT-4o-mini) para eficiência.
               </p>
+            </div>
+          </div>
+          
+          <div style={{ marginTop: '24px', padding: '14px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', fontSize: '0.8rem', color: '#92400e', display: 'flex', gap: '10px', alignItems: 'flex-start', lineHeight: '1.4' }}>
+            <Info size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+            <div>
+              <strong style={{ fontSize: '0.85rem' }}>Atenção sobre Custos de API:</strong>
+              <p style={{ margin: '4px 0 8px 0' }}>
+                O uso de chaves de API próprias remove limites de geração do sistema, mas pode gerar cobranças diretamente com os provedores dependendo do seu plano. O <strong>Google Gemini</strong> possui uma excelente camada 100% gratuita.
+              </p>
+              <div style={{ fontWeight: 600, marginBottom: '2px' }}>Estimativa média de custo por currículo gerado:</div>
+              <ul style={{ margin: '0', paddingLeft: '20px' }}>
+                <li><strong>Modelos Rápidos</strong> (Gemini Flash, GPT-4o-mini, Haiku): ~$0.002 a $0.005</li>
+                <li><strong>Modelos Robustos</strong> (Gemini Pro, GPT-4o, Claude Sonnet): ~$0.02 a $0.08</li>
+              </ul>
             </div>
           </div>
         </section>
