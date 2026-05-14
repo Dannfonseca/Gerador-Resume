@@ -503,9 +503,9 @@ Retorne APENAS o JSON array, sem markdown.`
       const resumeText = await extractResumeText(resume, set);
       const levelInfo = LEVEL_INSTRUCTIONS[level || "balanced"];
       const comboContext = getComboContext(careerCombo);
-      const prompt = \`Gere currículo professional e heritage em JSON no idioma \${language || 'Português (BR)'}. 
-Nível de Intervenção: \${levelInfo.name} (\${levelInfo.focus}).
-Instrução Importante: PRESERVE a profundidade profissional. É ESTRITAMENTE PROIBIDO resumir ou encurtar as experiências profissionais. Para CADA cargo, gere múltiplos bullet points longos e detalhados (pelo menos 5-8 se o original permitir), detalhando todas as responsabilidades, tecnologias, processos e métricas citadas. Expanda as frases para ficarem ricas e descritivas. Não abrevie o histórico do candidato. Incorpore as keywords de forma natural no meio dessas descrições aprofundadas.
+      const prompt = `Gere currículo professional e heritage em JSON no idioma ${language || 'Português (BR)'}. 
+Nível de Intervenção: ${levelInfo.name} (${levelInfo.focus}).
+Instrução Importante: PRESERVE todos os cargos e projetos do currículo original separadamente. Para CADA cargo/projeto, gere entre 4 a 6 bullet points objetivos e profissionais. Cada bullet point deve seguir a estrutura: [Verbo de Ação] + [Contexto/Tecnologia] + [Resultado/Propósito] (ex: "Liderou o ciclo completo de desenvolvimento de uma plataforma... utilizando Node.js e SQLite"). Não seja excessivamente verborrágico, mas mantenha a profundidade técnica. Incorpore as keywords de forma natural.
 
 Keywords a Otimizar: ${boostedKeywords}. 
 Setor: ${comboContext ? comboContext : 'Geral'}.
