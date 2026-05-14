@@ -81,8 +81,24 @@ export const AnalysisResponseSchema = z.object({
   foundKeywords: z.array(z.string()).nullable(),
   missingKeywords: z.array(z.string()).nullable(),
   strengths: z.array(StrengthSchema),
-  keywordOps: z.array(z.string()),
-  tips: z.array(z.string())
+  keywordOps: z.preprocess(
+    (val) => {
+      if (Array.isArray(val)) {
+        return val.map((item) => typeof item === 'object' && item !== null ? Object.values(item).join(' - ') : String(item));
+      }
+      return val;
+    },
+    z.array(z.string())
+  ),
+  tips: z.preprocess(
+    (val) => {
+      if (Array.isArray(val)) {
+        return val.map((item) => typeof item === 'object' && item !== null ? Object.values(item).join(' - ') : String(item));
+      }
+      return val;
+    },
+    z.array(z.string())
+  )
 });
 
 // ========== Aggressiveness Level ==========
