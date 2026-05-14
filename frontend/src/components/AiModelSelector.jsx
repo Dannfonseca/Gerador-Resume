@@ -1,11 +1,8 @@
 import { motion } from 'framer-motion';
 import { useLanguage } from '../i18n/LanguageContext';
+import { PROVIDERS } from '../lib/aiModels';
 
-const MODELS = [
-  { id: 'gemini-1.5-flash', key: 'flash' },
-  { id: 'gemini-1.5-pro',   key: 'pro'   },
-  { id: 'gemini-2.0-pro-exp', key: 'ultra' } // Usando 2.0 Pro Exp como "Ultra" por agora
-];
+const MODELS = PROVIDERS.flatMap((provider) => provider.models).slice(0, 3);
 
 /**
  * AiModelSelector — Component for picking the AI "brain".
@@ -24,7 +21,6 @@ export default function AiModelSelector({ selectedModel, setSelectedModel }) {
       <div className="model-cards">
         {MODELS.map((model, idx) => {
           const isSelected = selectedModel === model.id;
-          const modelT = t(`models.${model.key}`);
 
           return (
             <motion.button
@@ -37,9 +33,9 @@ export default function AiModelSelector({ selectedModel, setSelectedModel }) {
               transition={{ delay: 0.3 + idx * 0.1 }}
               whileTap={{ scale: 0.98 }}
             >
-              <span className="model-card-tag">{modelT.tag}</span>
-              <span className="model-card-name">{modelT.name}</span>
-              <p className="model-card-desc">{modelT.desc}</p>
+              <span className="model-card-tag">{model.tag}</span>
+              <span className="model-card-name">{model.name}</span>
+              <p className="model-card-desc">{model.desc}</p>
               {isSelected && (
                 <motion.div
                   className="lang-option-indicator"

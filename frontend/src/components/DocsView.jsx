@@ -1,4 +1,4 @@
-import { Book, Terminal, Settings, Key, Zap, CheckCircle, Info, BookOpen, Cpu, ShieldCheck } from 'lucide-react';
+import { Terminal, Settings, Key, Zap, CheckCircle, Info, Cpu, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function DocsView({ onBack }) {

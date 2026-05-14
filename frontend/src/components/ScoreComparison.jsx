@@ -3,6 +3,25 @@ import { Shield, Target, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp
 import { useState } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 
+function DeltaIndicator({ delta }) {
+  if (delta == null) return null;
+  if (delta > 0) return (
+    <span className="score-delta positive">
+      <TrendingUp size={14} /> +{delta}
+    </span>
+  );
+  if (delta < 0) return (
+    <span className="score-delta negative">
+      <TrendingDown size={14} /> {delta}
+    </span>
+  );
+  return (
+    <span className="score-delta neutral">
+      <Minus size={14} /> 0
+    </span>
+  );
+}
+
 /**
  * ScoreComparison — Shows a before/after comparison of ATS and Match scores.
  * Displayed in the results view after generation completes.
@@ -23,25 +42,6 @@ export default function ScoreComparison({ before, after }) {
   const getDelta = (beforeVal, afterVal) => {
     if (beforeVal == null || afterVal == null) return null;
     return afterVal - beforeVal;
-  };
-
-  const DeltaIndicator = ({ delta }) => {
-    if (delta == null) return null;
-    if (delta > 0) return (
-      <span className="score-delta positive">
-        <TrendingUp size={14} /> +{delta}
-      </span>
-    );
-    if (delta < 0) return (
-      <span className="score-delta negative">
-        <TrendingDown size={14} /> {delta}
-      </span>
-    );
-    return (
-      <span className="score-delta neutral">
-        <Minus size={14} /> 0
-      </span>
-    );
   };
 
   const atsDelta = getDelta(before?.atsScore, after?.atsScore);

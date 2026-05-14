@@ -1,3 +1,5 @@
+import { DEFAULT_AI_MODEL } from './aiModels';
+
 /**
  * Simple encryption/decryption helper for the API Keys.
  */
@@ -21,17 +23,18 @@ const decrypt = (encoded) => {
       .map((char, i) => 
         String.fromCharCode(char.charCodeAt(0) ^ SECRET_SALT.charCodeAt(i % SECRET_SALT.length))
       ).join('');
-  } catch (e) {
+  } catch {
     return null;
   }
 };
 
 export const saveApiKey = (service, key) => {
-  if (!key) {
+  const normalizedKey = key?.trim() || '';
+  if (!normalizedKey) {
     localStorage.removeItem(`${service}_api_key`);
     return;
   }
-  localStorage.setItem(`${service}_api_key`, encrypt(key));
+  localStorage.setItem(`${service}_api_key`, encrypt(normalizedKey));
 };
 
 export const getApiKey = (service) => {
@@ -43,9 +46,9 @@ export const clearApiKey = (service) => {
 };
 
 export const saveAiModel = (modelId) => {
-  localStorage.setItem('preferred_ai_model', modelId);
+  localStorage.setItem('preferred_ai_model', modelId || DEFAULT_AI_MODEL);
 };
 
 export const getAiModel = () => {
-  return localStorage.getItem('preferred_ai_model') || 'gemini-1.5-pro';
+  return localStorage.getItem('preferred_ai_model') || DEFAULT_AI_MODEL;
 };

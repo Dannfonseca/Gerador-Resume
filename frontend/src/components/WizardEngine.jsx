@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getApiKey, getAiModel } from '../lib/apiKey';
@@ -36,16 +36,17 @@ export default function WizardEngine({ currentStep, setCurrentStep }) {
   const [selectedLayout, setSelectedLayout] = useState('professional');
   const [keywordSuggestions, setKeywordSuggestions] = useState([]);
   const [isLoadingKeywords, setIsLoadingKeywords] = useState(false);
-  const [activeBoostedKeywords, setActiveBoostedKeywords] = useState([]);
   const [isRefining, setIsRefining] = useState(false);
 
   // ── API Headers ──────────────────────────────
   const getHeaders = (extra = {}) => {
     const geminiKey = getApiKey('gemini');
     const openaiKey = getApiKey('openai');
+    const anthropicKey = getApiKey('anthropic');
     return {
       ...(geminiKey ? { 'x-api-key': geminiKey } : {}),
       ...(openaiKey ? { 'x-openai-key': openaiKey } : {}),
+      ...(anthropicKey ? { 'x-anthropic-key': anthropicKey } : {}),
       ...extra
     };
   };
@@ -151,7 +152,6 @@ export default function WizardEngine({ currentStep, setCurrentStep }) {
   };
 
   const handleGenerateWithKeywords = (activeKeywords) => {
-    setActiveBoostedKeywords(activeKeywords);
     generateMutation.mutate(activeKeywords);
   };
 
@@ -205,6 +205,7 @@ export default function WizardEngine({ currentStep, setCurrentStep }) {
           text: editModal.value,
           jobDescription: jobDescText,
           instruction,
+          modelId: getAiModel(),
         })
       });
       const data = await res.json();

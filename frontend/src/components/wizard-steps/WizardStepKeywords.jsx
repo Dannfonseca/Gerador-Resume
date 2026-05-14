@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Zap, Info, Sparkles } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -28,16 +28,8 @@ export default function WizardStepKeywords({
   const { t } = useLanguage();
   const [toggledKeywords, setToggledKeywords] = useState({});
 
-  useEffect(() => {
-    if (suggestions && suggestions.length > 0) {
-      const initial = {};
-      suggestions.forEach((_, i) => { initial[i] = true; });
-      setToggledKeywords(initial);
-    }
-  }, [suggestions]);
-
   const toggleKeyword = (idx) => {
-    setToggledKeywords(prev => ({ ...prev, [idx]: !prev[idx] }));
+    setToggledKeywords(prev => ({ ...prev, [idx]: !(prev[idx] ?? true) }));
   };
 
   const toggleAll = (value) => {
@@ -48,11 +40,11 @@ export default function WizardStepKeywords({
 
   const getActiveKeywords = () => {
     if (!suggestions) return [];
-    return suggestions.filter((_, i) => toggledKeywords[i]).map(s => s.keyword);
+    return suggestions.filter((_, i) => toggledKeywords[i] ?? true).map(s => s.keyword);
   };
 
-  const activeCount = Object.values(toggledKeywords).filter(Boolean).length;
   const totalCount = suggestions?.length || 0;
+  const activeCount = suggestions?.filter((_, i) => toggledKeywords[i] ?? true).length || 0;
 
   if (isLoading) {
     return (
@@ -107,7 +99,7 @@ export default function WizardStepKeywords({
         <div className="keyword-boost-group-label">{label}</div>
         <div className="keyword-boost-chips">
           {items.map((item, chipIdx) => {
-            const isActive = toggledKeywords[item._idx];
+            const isActive = toggledKeywords[item._idx] ?? true;
             const catColor = CATEGORY_COLORS[item.category] || '#6b7280';
             return (
               <motion.button

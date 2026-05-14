@@ -2,29 +2,29 @@ import { hasItems } from '../../lib/resumePayload';
 import ReactMarkdown from 'react-markdown';
 import React from 'react';
 
+function EditableField({ onEdit, path, value, as: Tag = 'span', className = '', markdown = false }) {
+  if (!value) return null;
+  const content = markdown ? (
+    <ReactMarkdown components={{ p: Tag === 'span' ? 'span' : React.Fragment }}>{value}</ReactMarkdown>
+  ) : value;
+
+  if (!onEdit) {
+    return Tag === 'span' && !className ? <>{content}</> : <Tag className={className}>{content}</Tag>;
+  }
+
+  return (
+    <Tag
+      className={`${className} editable-field`}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(path, value); }}
+      title="Clique para editar"
+    >
+      {content}
+    </Tag>
+  );
+}
+
 export default function ProfessionalTheme({ data, onEdit }) {
   const isPt = data?.language === 'pt-BR' || data?.language === 'pt';
-
-  const E = ({ path, value, as: Tag = 'span', className = '', markdown = false }) => {
-    if (!value) return null;
-    const content = markdown ? (
-      <ReactMarkdown components={{ p: Tag === 'span' ? 'span' : React.Fragment }}>{value}</ReactMarkdown>
-    ) : value;
-
-    if (!onEdit) {
-      return Tag === 'span' && !className ? <>{content}</> : <Tag className={className}>{content}</Tag>;
-    }
-
-    return (
-      <Tag 
-        className={`${className} editable-field`} 
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(path, value); }}
-        title="Clique para editar"
-      >
-        {content}
-      </Tag>
-    );
-  };
 
   const t = {
     personal: isPt ? 'Informações Pessoais' : 'Personal Information',
@@ -48,18 +48,18 @@ export default function ProfessionalTheme({ data, onEdit }) {
 
   return (
     <div className="professional-theme-container">
-      <E as="h1" path="name" value={data?.name} className="resume-name-header" />
+      <EditableField onEdit={onEdit} as="h1" path="name" value={data?.name} className="resume-name-header" />
 
       <div className="contact-line">
-        {data?.email && <span><E path="email" value={data.email} /></span>}
-        {data?.phone && <span> | <E path="phone" value={data.phone} /></span>}
-        {data?.address && <span> | <E path="address" value={data.address} /></span>}
+        {data?.email && <span><EditableField onEdit={onEdit} path="email" value={data.email} /></span>}
+        {data?.phone && <span> | <EditableField onEdit={onEdit} path="phone" value={data.phone} /></span>}
+        {data?.address && <span> | <EditableField onEdit={onEdit} path="address" value={data.address} /></span>}
       </div>
 
       {data?.summary && (
         <div className="section-compact">
           <div className="section-title-compact">{t.summary}</div>
-          <E as="div" className="summary-text" path="summary" value={data.summary} markdown />
+          <EditableField onEdit={onEdit} as="div" className="summary-text" path="summary" value={data.summary} markdown />
         </div>
       )}
 
@@ -69,18 +69,18 @@ export default function ProfessionalTheme({ data, onEdit }) {
           {experience.map((exp, idx) => (
             <div key={`${exp.role}-${idx}`} className="experience-item-compact">
               <div className="item-header-compact">
-                <E as="strong" className="role-title" path={`experience.${idx}.role`} value={exp.role} />
-                <E as="span" className="item-date" path={`experience.${idx}.date`} value={exp.date} />
+                <EditableField onEdit={onEdit} as="strong" className="role-title" path={`experience.${idx}.role`} value={exp.role} />
+                <EditableField onEdit={onEdit} as="span" className="item-date" path={`experience.${idx}.date`} value={exp.date} />
               </div>
               <div className="item-subheader-compact">
-                <E as="span" className="company-name" path={`experience.${idx}.company`} value={exp.company} />
-                <E as="span" className="item-location" path={`experience.${idx}.location`} value={exp.location} />
+                <EditableField onEdit={onEdit} as="span" className="company-name" path={`experience.${idx}.company`} value={exp.company} />
+                <EditableField onEdit={onEdit} as="span" className="item-location" path={`experience.${idx}.location`} value={exp.location} />
               </div>
               {hasItems(exp.responsibilities) && (
                 <ul className="bullet-list-compact">
                   {exp.responsibilities.map((item, itemIdx) => (
                     <li key={`${item}-${itemIdx}`}>
-                      <E as="span" path={`experience.${idx}.responsibilities.${itemIdx}`} value={item} markdown />
+                      <EditableField onEdit={onEdit} as="span" path={`experience.${idx}.responsibilities.${itemIdx}`} value={item} markdown />
                     </li>
                   ))}
                 </ul>
@@ -96,12 +96,12 @@ export default function ProfessionalTheme({ data, onEdit }) {
           {education.map((edu, idx) => (
             <div key={`${edu.degree}-${idx}`} className="experience-item-compact">
               <div className="item-header-compact">
-                <E as="strong" className="role-title" path={`education.${idx}.degree`} value={edu.degree} />
-                <E as="span" className="item-date" path={`education.${idx}.date`} value={edu.date} />
+                <EditableField onEdit={onEdit} as="strong" className="role-title" path={`education.${idx}.degree`} value={edu.degree} />
+                <EditableField onEdit={onEdit} as="span" className="item-date" path={`education.${idx}.date`} value={edu.date} />
               </div>
               <div className="item-subheader-compact">
-                <E as="span" className="company-name" path={`education.${idx}.institution`} value={edu.institution} />
-                <E as="span" className="item-location" path={`education.${idx}.location`} value={edu.location} />
+                <EditableField onEdit={onEdit} as="span" className="company-name" path={`education.${idx}.institution`} value={edu.institution} />
+                <EditableField onEdit={onEdit} as="span" className="item-location" path={`education.${idx}.location`} value={edu.location} />
               </div>
             </div>
           ))}

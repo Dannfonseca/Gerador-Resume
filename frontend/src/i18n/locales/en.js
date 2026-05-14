@@ -171,30 +171,6 @@ export default {
   models: {
     title: 'AI Intelligence',
     desc: 'Choose the provider and processing power.',
-    gemini: {
-      flash8b: { name: 'Gemini 1.5 Flash-8B', tag: 'ULTRA-LIGHT', desc: 'The fastest of all, ideal for simple checks.' },
-      flash15: { name: 'Gemini 1.5 Flash', tag: 'AGILE', desc: 'Fast and efficient for most resumes.' },
-      flash2: { name: 'Gemini 2.0 Flash', tag: 'MODERN', desc: 'New generation balanced between speed and logic.' },
-      pro15: { name: 'Gemini 1.5 Pro', tag: 'RECOMMENDED', desc: 'Excellent in context and structure analysis.' },
-      pro15v2: { name: 'Gemini 1.5 Pro-002', tag: 'OPTIMIZED', desc: 'Refined version for complex technical writing.' },
-      pro2: { name: 'Gemini 2.0 Pro Exp', tag: 'TOP TIER', desc: 'Maximum experimental reasoning from Google.' },
-    },
-    openai: {
-      gpt35: { name: 'GPT-3.5 Turbo', tag: 'BASIC', desc: 'Classic model, useful for very simple tasks.' },
-      gpt4om: { name: 'GPT-4o mini', tag: 'EFFICIENT', desc: 'Fast and smart for point adjustments.' },
-      gpt4t: { name: 'GPT-4 Turbo', tag: 'PROFESSIONAL', desc: 'Robust analysis with a proven track record.' },
-      gpt4o: { name: 'GPT-4o', tag: 'RECOMMENDED', desc: 'The most versatile intelligence for any resume.' },
-      o1m: { name: 'o1-mini', tag: 'PURE LOGIC', desc: 'Focused on mathematical and logical reasoning.' },
-      o1p: { name: 'o1-preview', tag: 'SCIENTIFIC', desc: 'OpenAI\'s highest level of reasoning.' },
-    },
-    anthropic: {
-      haiku3: { name: 'Claude 3 Haiku', tag: 'BUDGET', desc: 'Simple and direct for quick reviews.' },
-      haiku35: { name: 'Claude 3.5 Haiku', tag: 'FAST', desc: 'Surprising intelligence with minimal response time.' },
-      sonnet3: { name: 'Claude 3 Sonnet', tag: 'STABLE', desc: 'Good balance for corporate resumes.' },
-      sonnet35: { name: 'Claude 3.5 Sonnet', tag: '⭐ RECOMMENDED', desc: 'The most human and natural writing available today.' },
-      opus3: { name: 'Claude 3 Opus', tag: 'CREATIVE', desc: 'Maximum depth and poetic writing.' },
-      claude21: { name: 'Claude 2.1', tag: 'LEGACY', desc: 'Classic technical precision for academic CVs.' },
-    }
   },
   common: {
     error: 'Error',

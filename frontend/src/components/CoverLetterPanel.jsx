@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Copy, Edit3, Check, Loader2, Code } from 'lucide-react';
-import { getApiKey } from '../lib/apiKey';
+import { getApiKey, getAiModel } from '../lib/apiKey';
 import { useLanguage } from '../i18n/LanguageContext';
 
 /**
@@ -22,18 +22,21 @@ export default function CoverLetterPanel({ resumeText, jobDescription }) {
     setIsGenerating(true);
     const geminiKey = getApiKey('gemini');
     const openaiKey = getApiKey('openai');
+    const anthropicKey = getApiKey('anthropic');
     try {
       const res = await fetch('/api/cover-letter', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           ...(geminiKey ? { 'x-api-key': geminiKey } : {}),
-          ...(openaiKey ? { 'x-openai-key': openaiKey } : {})
+          ...(openaiKey ? { 'x-openai-key': openaiKey } : {}),
+          ...(anthropicKey ? { 'x-anthropic-key': anthropicKey } : {})
         },
         body: JSON.stringify({
           resumeText,
           jobDescription,
-          language
+          language,
+          modelId: getAiModel()
         })
       });
       const data = await res.json();
@@ -44,7 +47,7 @@ export default function CoverLetterPanel({ resumeText, jobDescription }) {
       } else {
         alert(t('coverLetter.error') + ": " + data.error);
       }
-    } catch (e) {
+    } catch {
       alert("Error in request.");
     } finally {
       setIsGenerating(false);

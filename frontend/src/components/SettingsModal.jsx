@@ -1,86 +1,56 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X, Key, Save, Trash2, Eye, EyeOff, CheckCircle, Sparkles, Settings, ShieldCheck, BrainCircuit, Box } from 'lucide-react';
 import { getApiKey, saveApiKey, clearApiKey, saveAiModel, getAiModel } from '../lib/apiKey';
+import { DEFAULT_AI_MODEL, PROVIDERS } from '../lib/aiModels';
 import { useLanguage } from '../i18n/LanguageContext';
 import { motion } from 'framer-motion';
 
-const PROVIDERS = [
-  {
-    id: 'gemini',
-    label: 'Google Gemini',
-    models: [
-      { id: 'gemini-1.5-flash-8b', key: 'flash8b' },
-      { id: 'gemini-1.5-flash',    key: 'flash15' },
-      { id: 'gemini-2.0-flash',    key: 'flash2' },
-      { id: 'gemini-1.5-pro',      key: 'pro15' },
-      { id: 'gemini-1.5-pro-002',  key: 'pro15v2' },
-      { id: 'gemini-2.0-pro-exp',  key: 'pro2' }
-    ]
-  },
-  {
-    id: 'openai',
-    label: 'OpenAI',
-    models: [
-      { id: 'gpt-3.5-turbo',    key: 'gpt35' },
-      { id: 'gpt-4o-mini',      key: 'gpt4om' },
-      { id: 'gpt-4-turbo',      key: 'gpt4t' },
-      { id: 'gpt-4o',           key: 'gpt4o' },
-      { id: 'o1-mini',          key: 'o1m' },
-      { id: 'o1-preview',       key: 'o1p' }
-    ]
-  },
-  {
-    id: 'anthropic',
-    label: 'Anthropic Claude',
-    models: [
-      { id: 'claude-3-haiku-20240307',    key: 'haiku3' },
-      { id: 'claude-3-5-haiku-20241022',  key: 'haiku35' },
-      { id: 'claude-3-sonnet-20240229',   key: 'sonnet3' },
-      { id: 'claude-3-5-sonnet-20241022', key: 'sonnet35' },
-      { id: 'claude-3-opus-20240229',     key: 'opus3' },
-      { id: 'claude-2.1',                 key: 'claude21' }
-    ]
-  }
-];
-
-export default function SettingsModal({ onClose }) {
+export default function SettingsModal({ onClose, onSaved }) {
   const { t } = useLanguage();
-  const [geminiKey, setGeminiKey] = useState('');
-  const [openaiKey, setOpenaiKey] = useState('');
-  const [anthropicKey, setAnthropicKey] = useState('');
-  const [selectedModel, setSelectedModel] = useState('gemini-1.5-pro');
+  const [geminiKey, setGeminiKey] = useState(() => getApiKey('gemini') || '');
+  const [openaiKey, setOpenaiKey] = useState(() => getApiKey('openai') || '');
+  const [anthropicKey, setAnthropicKey] = useState(() => getApiKey('anthropic') || '');
+  const [selectedModel, setSelectedModel] = useState(() => getAiModel() || DEFAULT_AI_MODEL);
   const [showGemini, setShowGemini] = useState(false);
   const [showOpenai, setShowOpenai] = useState(false);
   const [showAnthropic, setShowAnthropic] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [saveError, setSaveError] = useState('');
   
-  const [hasGemini, setHasGemini] = useState(false);
-  const [hasOpenai, setHasOpenai] = useState(false);
-  const [hasAnthropic, setHasAnthropic] = useState(false);
-
-  useEffect(() => {
-    const savedGemini = getApiKey('gemini');
-    const savedOpenai = getApiKey('openai');
-    const savedAnthropic = getApiKey('anthropic');
-    const savedModel = getAiModel();
-
-    if (savedGemini) { setGeminiKey(savedGemini); setHasGemini(true); }
-    if (savedOpenai) { setOpenaiKey(savedOpenai); setHasOpenai(true); }
-    if (savedAnthropic) { setAnthropicKey(savedAnthropic); setHasAnthropic(true); }
-    setSelectedModel(savedModel);
-  }, []);
+  const [hasGemini, setHasGemini] = useState(() => !!getApiKey('gemini'));
+  const [hasOpenai, setHasOpenai] = useState(() => !!getApiKey('openai'));
+  const [hasAnthropic, setHasAnthropic] = useState(() => !!getApiKey('anthropic'));
 
   const handleSave = () => {
-    saveApiKey('gemini', geminiKey);
-    saveApiKey('openai', openaiKey);
-    saveApiKey('anthropic', anthropicKey);
+    const normalized = {
+      gemini: geminiKey.trim(),
+      openai: openaiKey.trim(),
+      anthropic: anthropicKey.trim(),
+    };
+
+    saveApiKey('gemini', normalized.gemini);
+    saveApiKey('openai', normalized.openai);
+    saveApiKey('anthropic', normalized.anthropic);
     saveAiModel(selectedModel);
 
-    setHasGemini(!!geminiKey);
-    setHasOpenai(!!openaiKey);
-    setHasAnthropic(!!anthropicKey);
+    const wasPersisted =
+      (getApiKey('gemini') || '') === normalized.gemini &&
+      (getApiKey('openai') || '') === normalized.openai &&
+      (getApiKey('anthropic') || '') === normalized.anthropic &&
+      getAiModel() === selectedModel;
+
+    if (!wasPersisted) {
+      setSaveError('As configurações não foram confirmadas no armazenamento local.');
+      return;
+    }
+
+    setHasGemini(!!normalized.gemini);
+    setHasOpenai(!!normalized.openai);
+    setHasAnthropic(!!normalized.anthropic);
+    setSaveError('');
     setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2000);
+    onSaved?.('Configurações salvas.');
+    onClose();
   };
 
   const handleDelete = (service) => {
@@ -133,8 +103,7 @@ export default function SettingsModal({ onClose }) {
                 <div className="model-cards" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                   {provider.models.map((model) => {
                     const isSelected = selectedModel === model.id;
-                    const modelT = t(`models.${provider.id}.${model.key}`);
-                    const isRecommended = modelT.tag.includes('RECOMENDADO') || modelT.tag.includes('RECOMMENDED');
+                    const isRecommended = model.recommended;
                     
                     return (
                       <button
@@ -157,11 +126,11 @@ export default function SettingsModal({ onClose }) {
                             backgroundColor: isRecommended ? 'var(--primary)' : undefined,
                             color: isRecommended ? 'white' : undefined
                           }}>
-                            {modelT.tag}
+                            {model.tag}
                           </span>
                         </div>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 700, textAlign: 'left', width: '100%' }}>{modelT.name}</div>
-                        <div style={{ fontSize: '0.6rem', color: 'var(--secondary)', lineHeight: '1.2', textAlign: 'left', width: '100%', marginTop: '2px' }}>{modelT.desc}</div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, textAlign: 'left', width: '100%' }}>{model.name}</div>
+                        <div style={{ fontSize: '0.6rem', color: 'var(--secondary)', lineHeight: '1.2', textAlign: 'left', width: '100%', marginTop: '2px' }}>{model.desc}</div>
                         {isSelected && (
                           <motion.div layoutId="setting-model-indicator" className="lang-option-indicator" style={{ background: 'var(--primary)', height: '2px' }} />
                         )}
@@ -229,6 +198,12 @@ export default function SettingsModal({ onClose }) {
             </div>
           </div>
         </div>
+
+        {saveError && (
+          <div role="alert" style={{ marginTop: '18px', color: '#b91c1c', fontSize: '0.82rem', fontWeight: 700 }}>
+            {saveError}
+          </div>
+        )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '32px' }}>
           <button className="btn-secondary" onClick={onClose} style={{ padding: '10px 20px' }}>{t('common.cancel')}</button>

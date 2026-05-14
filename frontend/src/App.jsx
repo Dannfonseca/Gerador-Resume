@@ -11,12 +11,8 @@ const queryClient = new QueryClient();
 function AppContent() {
   const [currentStep, setCurrentStep] = useState('upload');
   const [activeTab, setActiveTab] = useState('app');
-  const [prevStep, setPrevStep] = useState('upload');
 
   const handleSwitchTab = (tab) => {
-    if (tab === 'docs') {
-      setPrevStep(currentStep);
-    }
     setActiveTab(tab);
   };
 

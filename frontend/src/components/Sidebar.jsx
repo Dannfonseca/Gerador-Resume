@@ -1,4 +1,4 @@
-import { Upload, Search, Sliders, Key, Zap, FileText, Check, BookOpen, Settings, LayoutDashboard, Menu, X as CloseIcon } from 'lucide-react';
+import { Upload, Search, Sliders, Key, FileText, Check, BookOpen, Settings, LayoutDashboard, Menu, X as CloseIcon } from 'lucide-react';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import SettingsModal from './SettingsModal';
@@ -16,6 +16,7 @@ export default function Sidebar({ currentStep, activeTab, onSwitchTab, onNavigat
   const { t } = useLanguage();
   const [showSettings, setShowSettings] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   const currentIdx = WIZARD_STEPS.findIndex(s => s.id === currentStep);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
@@ -26,6 +27,11 @@ export default function Sidebar({ currentStep, activeTab, onSwitchTab, onNavigat
       onNavigateStep(stepId);
       setIsMenuOpen(false);
     }
+  };
+
+  const showToast = (message) => {
+    setToastMessage(message);
+    window.setTimeout(() => setToastMessage(''), 2600);
   };
 
   return (
@@ -125,7 +131,18 @@ export default function Sidebar({ currentStep, activeTab, onSwitchTab, onNavigat
         </div>
       </div>
 
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {showSettings && (
+        <SettingsModal
+          onClose={() => setShowSettings(false)}
+          onSaved={showToast}
+        />
+      )}
+      {toastMessage && (
+        <div className="app-toast" role="status" aria-live="polite">
+          <Check size={16} strokeWidth={3} />
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </aside>
   );
 }

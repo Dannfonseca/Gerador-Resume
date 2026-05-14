@@ -1371,8 +1371,8 @@
     .db-exp-item,
     .skills-grid,
     .db-skills {
-        break-inside: avoid;
-        page-break-inside: avoid;
+        break-inside: auto;
+        page-break-inside: auto;
     }
 
     .professional-row {
