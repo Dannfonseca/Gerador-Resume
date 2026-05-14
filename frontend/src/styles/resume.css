@@ -1320,7 +1320,8 @@
     .sidebar, .resume-toolbar, .article-header,
     .analysis-dashboard, .cover-letter-cta, .cover-letter-result,
     .cover-letter-loading, .level-selector, .score-comparison,
-    .keyword-boost-loading, .keyword-boost-chips, .keyword-boost-controls {
+    .keyword-boost-loading, .keyword-boost-chips, .keyword-boost-controls,
+    .wizard-progress {
         display: none !important;
     }
 
