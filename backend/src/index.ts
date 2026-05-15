@@ -270,6 +270,17 @@ Retorne também atsBreakdown com os valores de cada camada.
 - Recém-formado com tech certas + projetos relevantes = **45-60**
 - Área diferente da vaga = **10-30**
 
+### matchGrade:
+Atribua uma nota final (A, B, C, D ou F) baseada na compatibilidade:
+- A (Excepcional): 90-100
+- B (Forte): 75-89
+- C (Moderado): 60-74
+- D (Fraco): 40-59
+- F (Inadequado): 0-39
+
+### missingQualifications:
+Liste explicitamente 1 a 3 qualificações críticas exigidas pela vaga que o candidato NÃO possui. Se for aderente, liste como vazio ou omitido.
+
 ### matchAnalysis:
 Escreva um RESUMO BREVE (2-3 frases) sobre a compatibilidade geral. NÃO detalhe a pontuação critério por critério.
 
@@ -286,13 +297,30 @@ Escreva um RESUMO BREVE (2-3 frases) sobre a compatibilidade geral. NÃO detalhe
   "probability": "Alta" | "Média" | "Baixa",
   "screeningReason": "breve explicação do score ATS",
   "matchScore": number | null,
+  "matchGrade": "A" | "B" | "C" | "D" | "F" | null,
   "matchAnalysis": "resumo breve da compatibilidade (2-3 frases) | null",
+  "missingQualifications": ["O que está faltando no currículo para esta vaga"] | null,
   "foundKeywords": ["keywords da vaga encontradas no CV"],
   "missingKeywords": ["keywords da vaga NÃO encontradas no CV"],
   "strengths": [{ "title": "string", "description": "string" }],
   "keywordOps": ["oportunidades de melhoria"],
   "tips": ["dicas práticas"]
 }
+`;
+
+const MASTER_RESUME_SYSTEM_PROMPT = `
+You are the master resume engine for an ATS resume platform.
+
+Your job is to convert the candidate's original resume into a structured master resume.
+This is NOT a job-specific compatibility task. Do not calculate vacancy fit or ranking.
+
+Rules:
+- Preserve every real role, company, project, education item, date, tool, and skill that is supported by the source resume.
+- Do not invent employers, titles, certifications, technologies, metrics, seniority, degrees, or achievements.
+- Improve clarity, ATS readability, grammar, structure, and section organization.
+- Use stronger action verbs only when they remain faithful to the original work.
+- If a career focus is provided, tune vocabulary toward that focus without changing the candidate truth.
+- Return only valid JSON matching the requested resume schema.
 `;
 
 const LEVEL_INSTRUCTIONS: Record<string, { name: string; focus: string; actions: string }> = {
@@ -496,6 +524,59 @@ Retorne APENAS o JSON array, sem markdown.`
     } catch (e) { console.error(e); set.status = 500; return { error: "Erro keywords." }; }
   }, { body: t.Object({ resumeText: t.String(), jobDescription: t.Optional(t.String()), missingKeywords: t.Optional(t.String()), careerCombo: t.Optional(t.String()), language: t.Optional(t.String()), modelId: t.Optional(t.String()) }) })
 
+  .post("/api/generate-master", async ({ body, set, headers }) => {
+    try {
+      const { resume, level, careerFocus, language } = body;
+      const keys = getRequestKeys(headers as Record<string, string | undefined>);
+      const resumeText = await extractResumeText(resume, set);
+      if (!resumeText) return { error: "Curriculo invalido." };
+
+      const levelInfo = LEVEL_INSTRUCTIONS[level || "balanced"];
+      const prompt = `IDIOMA: ${language || 'Portugues (BR)'}
+NIVEL DE REESCRITA: ${levelInfo.name} (${levelInfo.focus})
+FOCO DE CARREIRA OPCIONAL: ${careerFocus || 'Nao informado'}
+
+CURRICULO ORIGINAL:
+${resumeText}
+
+Return JSON in this exact shape:
+{
+  "professional": ProfessionalResumeSchema,
+  "heritage": HeritageResumeSchema
+}`;
+
+      const modelId = body.modelId || DEFAULT_AI_MODEL;
+      const data = await generateJsonWithSelectedModel({
+        modelId,
+        keys,
+        temperature: 0.2,
+        maxTokens: 4096,
+        system: MASTER_RESUME_SYSTEM_PROMPT,
+        userText: prompt,
+        geminiSchema: {
+          type: SchemaType.OBJECT,
+          properties: {
+            professional: professionalResumeSchema,
+            heritage: heritageResumeSchema
+          },
+          required: ["professional", "heritage"]
+        }
+      });
+
+      const validated = GeminiResponseSchema.parse(data);
+      const latex = {
+        professional: formatResumeToLatex(validated.professional as any),
+        heritage: formatResumeToLatex(validated.heritage as any)
+      };
+
+      return { success: true, data: validated, latex };
+    } catch (e: any) {
+      console.error("Erro geracao mestre:", e);
+      set.status = 500;
+      return { error: e.message || "Erro ao gerar curriculo mestre." };
+    }
+  }, { body: t.Object({ resume: t.File(), level: t.Optional(t.String()), careerFocus: t.Optional(t.String()), language: t.Optional(t.String()), modelId: t.Optional(t.String()) }) })
+
   .post("/api/generate", async ({ body, set, headers }) => {
     try {
       const { resume, jobDescriptionText, level, boostedKeywords, careerCombo, language } = body;
@@ -505,7 +586,7 @@ Retorne APENAS o JSON array, sem markdown.`
       const comboContext = getComboContext(careerCombo);
       const prompt = `Gere currículo professional e heritage em JSON no idioma ${language || 'Português (BR)'}. 
 Nível de Intervenção: ${levelInfo.name} (${levelInfo.focus}).
-Instrução Importante: PRESERVE todos os cargos e projetos do currículo original separadamente. Para CADA cargo/projeto, gere no MÁXIMO 4 bullet points. Escolha e priorize as responsabilidades e conquistas MAIS RELEVANTES e impactantes para a VAGA descrita. Cada bullet point deve seguir a estrutura: [Verbo de Ação] + [Contexto/Tecnologia] + [Resultado/Propósito] (ex: "Liderou o ciclo completo de desenvolvimento de uma plataforma... utilizando Node.js e SQLite"). Seja objetivo, mantenha a profundidade técnica e incorpore as keywords de forma natural.
+Instrução Importante: PRESERVE todos os cargos e projetos do currículo original. Para CADA cargo/projeto, gere OBRIGATORIAMENTE de 3 a 4 bullet points LONGOS e DETALHADOS. Nunca resuma demais a experiência. Cada bullet point deve ter profundidade técnica e seguir a estrutura: [Verbo de Ação] + [Contexto/Tecnologia] + [Resultado/Propósito] (ex: "Liderou o ciclo completo de desenvolvimento de quatro aplicações web, desde a concepção até a implantação, garantindo entregas de valor..."). Incorpore as keywords de forma natural e honesta.
 
 Keywords a Otimizar: ${boostedKeywords}. 
 Setor: ${comboContext ? comboContext : 'Geral'}.
@@ -609,6 +690,172 @@ Retorne APENAS JSON válido.`
       return { success: true, text: refined };
     } catch (e) { set.status = 500; return { error: "Erro refino." }; }
   }, { body: t.Object({ text: t.String(), jobDescription: t.Optional(t.String()), instruction: t.Optional(t.String()), modelId: t.Optional(t.String()) }) })
+
+  .post("/api/tailor-resume", async ({ body, set, headers }) => {
+    try {
+      const { resume, jobDescription, careerCombo, language, boostedKeywords } = body;
+      const keys = getRequestKeys(headers as Record<string, string | undefined>);
+      const comboContext = getComboContext(careerCombo);
+      
+      const prompt = `Você é um especialista em ATS. Seu objetivo é adaptar um currículo mestre para uma vaga específica.
+MANTENHA todas as experiências, formações e projetos originais. Para cada experiência, você DEVE gerar de 3 a 4 bullet points LONGOS e DETALHADOS, exatamente como um profissional sênior escreveria. NUNCA resuma demais as informações.
+Cada bullet point deve demonstrar profundidade técnica, usando a estrutura: [Verbo de Ação] + [Contexto/Tecnologias] + [Resultado/Propósito]. Reescreva-os para destacar ao máximo as tecnologias exigidas pela vaga abaixo, sendo honesto.
+
+${boostedKeywords ? `\nINSTRUÇÃO CRÍTICA: Você DEVE incluir as seguintes palavras-chave no currículo (no resumo ou nas experiências): ${boostedKeywords}\n` : ''}
+
+IDIOMA: ${language || 'Português (BR)'}
+VAGA:
+${jobDescription}
+
+CURRÍCULO MESTRE:
+${JSON.stringify(resume)}
+
+Retorne APENAS JSON valido no formato:
+{
+  "professional": ProfessionalResumeSchema,
+  "heritage": HeritageResumeSchema
+}`;
+
+      const modelId = body.modelId || DEFAULT_AI_MODEL;
+      const json = await generateJsonWithSelectedModel({
+        modelId,
+        keys,
+        temperature: 0.2,
+        maxTokens: 4096,
+        userText: prompt
+      });
+
+      const professional = json.professional || json;
+      const heritage = json.heritage || {
+        ...professional,
+        links: professional.links || [],
+        projects: professional.projects || []
+      };
+      const validated = GeminiResponseSchema.parse({ professional, heritage });
+      const latex = {
+        professional: formatResumeToLatex(validated.professional as any),
+        heritage: formatResumeToLatex(validated.heritage as any)
+      };
+
+      return { success: true, data: validated, latex };
+    } catch (e) {
+      console.error(e);
+      set.status = 500;
+      return { error: "Erro ao adaptar currículo." };
+    }
+  }, { body: t.Object({ resume: t.Any(), jobDescription: t.String(), careerCombo: t.Optional(t.String()), language: t.Optional(t.String()), boostedKeywords: t.Optional(t.String()), modelId: t.Optional(t.String()) }) })
+
+  .post("/api/extract-job", async ({ body, set, headers }) => {
+    try {
+      const { url, modelId } = body;
+      const keys = getRequestKeys(headers as Record<string, string | undefined>);
+      
+      if (url.includes('linkedin.com')) {
+        set.status = 400;
+        return { error: "LinkedIn bloqueia extração automatizada. Por favor, cole o texto manualmente." };
+      }
+
+      // 1. Fetch HTML
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml'
+        }
+      });
+      
+      if (!res.ok) {
+        throw new Error(`Falha ao acessar o site: ${res.status} ${res.statusText}`);
+      }
+      
+      const html = await res.text();
+      
+      // 2. Strip script, style, and html tags
+      const cleanText = html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s\s+/g, ' ')
+        .substring(0, 15000); // limit payload size
+
+      // 3. Ask AI to extract metadata and Job Description
+      const prompt = `Você é um extrator de dados inteligente. Abaixo está o texto bruto extraído de uma página web de vagas de emprego.
+Por favor, identifique e extraia:
+1. O NOME DA EMPRESA (ex: Google, Gupy, Localiza)
+2. O CARGO DA VAGA (ex: Desenvolvedor Fullstack Sênior)
+3. A DESCRIÇÃO COMPLETA DA VAGA (incluindo requisitos e responsabilidades)
+
+TEXTO DO SITE:
+${cleanText}
+
+Retorne APENAS um JSON válido no formato:
+{
+  "company": "Nome da Empresa",
+  "title": "Título da Vaga",
+  "description": "Texto completo da descrição formatado com markdown"
+}`;
+
+      const aiModel = modelId || DEFAULT_AI_MODEL;
+      const jsonResponse = await generateJsonWithSelectedModel({
+        modelId: aiModel,
+        keys,
+        temperature: 0.1,
+        maxTokens: 4096,
+        userText: prompt
+      });
+
+      return { success: true, ...jsonResponse };
+    } catch (e: any) {
+      console.error("Erro na extração:", e);
+      set.status = 500;
+      return { error: e.message || "Erro interno ao tentar ler a URL da vaga." };
+    }
+  }, { body: t.Object({ url: t.String(), modelId: t.Optional(t.String()) }) })
+
+  .post("/api/analyze-master", async ({ body, set, headers }) => {
+    try {
+      const { resumeJson, jobDescription, language, modelId } = body;
+      const keys = getRequestKeys(headers as Record<string, string | undefined>);
+      
+      const resumeText = JSON.stringify(resumeJson, null, 2);
+      
+      const prompt = `Você é um motor de análise ATS. Faça uma leitura do seguinte currículo (em formato estruturado) e forneça o ATS Score base.
+${jobDescription ? 'COMO UMA VAGA FOI FORNECIDA, você DEVE calcular o Match Score (0-100) e o matchGrade (A-F).' : 'Como não há vaga específica, o Match Score e matchGrade devem ser null.'}
+      
+IDIOMA: ${language || 'Português (BR)'}
+CURRÍCULO:
+${resumeText}
+
+${jobDescription ? `VAGA:\n${jobDescription}\n` : ''}
+Retorne APENAS um JSON válido no formato solicitado.`;
+
+      const aiModel = modelId || DEFAULT_AI_MODEL;
+      const json = await generateJsonWithSelectedModel({
+        modelId: aiModel,
+        keys,
+        temperature: 0.1,
+        maxTokens: 4096,
+        system: ANALYSIS_SYSTEM_PROMPT,
+        userText: prompt
+      });
+
+      const parsed = AnalysisResponseSchema.parse(json);
+      const data = jobDescription ? parsed : {
+        ...parsed,
+        matchScore: null,
+        matchGrade: null,
+        matchAnalysis: null,
+        missingQualifications: null,
+        foundKeywords: parsed.foundKeywords || [],
+        missingKeywords: parsed.missingKeywords || [],
+      };
+
+      return { success: true, data };
+    } catch (e: any) {
+      console.error("Erro na análise mestre:", e);
+      set.status = 500;
+      return { error: e.message || "Erro interno na análise ATS." };
+    }
+  }, { body: t.Object({ resumeJson: t.Any(), jobDescription: t.Optional(t.String()), language: t.Optional(t.String()), modelId: t.Optional(t.String()) }) })
 
   .get("*", () => Bun.file(resolve(DIST_DIR, "index.html")))
   .listen(process.env.PORT || 3000);

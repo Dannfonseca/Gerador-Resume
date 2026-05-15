@@ -24,3 +24,17 @@ test('all ai-backed endpoints use selected model routing instead of hardcoded Ge
   assert.match(backendSource, /generateTextWithSelectedModel/);
   assert.doesNotMatch(backendSource, /model:\s*"gemini-2\.5-flash"/);
 });
+
+test('backend exposes a dedicated master generation endpoint without match score language', () => {
+  assert.match(backendSource, /MASTER_RESUME_SYSTEM_PROMPT/);
+  assert.match(backendSource, /\.post\("\/api\/generate-master"/);
+  const masterPrompt = backendSource.match(/const MASTER_RESUME_SYSTEM_PROMPT = `([\s\S]*?)`;/)?.[1] || '';
+  assert.doesNotMatch(masterPrompt, /Match Score/i);
+  assert.match(masterPrompt, /preserve/i);
+});
+
+test('tailor resume returns latex artifacts for saved job versions', () => {
+  const tailorBlock = backendSource.match(/\.post\("\/api\/tailor-resume"[\s\S]*?\}, \{ body:/)?.[0] || '';
+  assert.match(tailorBlock, /formatResumeToLatex/);
+  assert.match(tailorBlock, /latex/);
+});
