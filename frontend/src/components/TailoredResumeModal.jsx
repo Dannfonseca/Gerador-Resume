@@ -25,6 +25,60 @@ function getHeaders(extra = {}) {
   };
 }
 
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function renderResumeSection(title, body) {
+  if (!body) return '';
+  return `<h2>${escapeHtml(title)}</h2>${body}`;
+}
+
+function resumeToWordHtml(resume) {
+  if (!resume) return '';
+
+  const contact = [resume.email, resume.phone, resume.address].filter(Boolean).map(escapeHtml).join(' | ');
+  const experience = (resume.experience || []).map((item) => `
+    <div class="entry">
+      <h3>${escapeHtml(item.role)}${item.company ? ` - ${escapeHtml(item.company)}` : ''}</h3>
+      <p class="meta">${escapeHtml([item.date, item.location].filter(Boolean).join(' | '))}</p>
+      <ul>${(item.responsibilities || []).map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join('')}</ul>
+    </div>
+  `).join('');
+  const projects = (resume.projects || []).map((project) => `
+    <div class="entry">
+      <h3>${escapeHtml(project.name)}</h3>
+      <p class="meta">${escapeHtml(project.technologies)}</p>
+      <p>${escapeHtml(project.description)}</p>
+    </div>
+  `).join('');
+  const education = (resume.education || []).map((item) => `
+    <div class="entry">
+      <h3>${escapeHtml(item.degree)}${item.institution ? ` - ${escapeHtml(item.institution)}` : ''}</h3>
+      <p class="meta">${escapeHtml([item.date, item.location].filter(Boolean).join(' | '))}</p>
+    </div>
+  `).join('');
+  const skills = (resume.skillsGroup || []).map((group) => `
+    <p><strong>${escapeHtml(group.category)}:</strong> ${escapeHtml((group.items || []).join(', '))}</p>
+  `).join('');
+
+  return `
+    <h1>${escapeHtml(resume.name)}</h1>
+    <p class="title">${escapeHtml(resume.title)}</p>
+    <p class="contact">${contact}</p>
+    ${renderResumeSection('Resumo', `<p>${escapeHtml(resume.summary)}</p>`)}
+    ${renderResumeSection('Experiencia', experience)}
+    ${renderResumeSection('Projetos', projects)}
+    ${renderResumeSection('Educacao', education)}
+    ${renderResumeSection('Competencias', skills)}
+  `;
+}
+
 export default function TailoredResumeModal({
   job,
   resumeVersion,
@@ -104,6 +158,36 @@ export default function TailoredResumeModal({
     URL.revokeObjectURL(url);
   };
 
+  const exportWord = () => {
+    const safeCompany = (job.company || 'vaga').replace(/[^\w-]+/g, '_');
+    const documentHtml = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      body { font-family: Arial, sans-serif; color: #111827; line-height: 1.35; }
+      h1 { font-size: 28px; margin: 0 0 4px; }
+      h2 { font-size: 15px; margin: 22px 0 8px; border-bottom: 1px solid #d1d5db; text-transform: uppercase; }
+      h3 { font-size: 13px; margin: 10px 0 2px; }
+      p { margin: 4px 0; }
+      ul { margin: 6px 0 0 18px; padding: 0; }
+      li { margin: 3px 0; }
+      .title { font-size: 15px; font-weight: bold; }
+      .contact, .meta { color: #4b5563; font-size: 11px; }
+      .entry { margin-bottom: 10px; }
+    </style>
+  </head>
+  <body>${resumeToWordHtml(selectedResume)}</body>
+</html>`;
+    const blob = new Blob(['\ufeff', documentHtml], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `cv_${safeCompany}_${Date.now()}.doc`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
   const copyLatex = () => {
     if (!selectedLatex) return;
     navigator.clipboard.writeText(selectedLatex);
@@ -162,6 +246,9 @@ export default function TailoredResumeModal({
             </button>
             <button className="btn-secondary" onClick={exportJson}>
               <Download size={16} /> {t('result.exportJson')}
+            </button>
+            <button className="btn-secondary" onClick={exportWord}>
+              <Download size={16} /> Word
             </button>
             {selectedLatex && (
               <button className="btn-secondary" onClick={copyLatex}>

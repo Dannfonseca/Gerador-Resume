@@ -15,6 +15,9 @@ test('tailored resume modal exposes result actions for saved job resumes', () =>
   assert.match(source, /RESUME_LAYOUTS/);
   assert.match(source, /\/api\/refine/);
   assert.match(source, /window\.print/);
+  assert.match(source, /exportWord/);
+  assert.match(source, /application\/msword/);
+  assert.match(source, /\.doc`/);
   assert.match(source, /navigator\.clipboard\.writeText/);
   assert.match(source, /onSaveVersion/);
 });
