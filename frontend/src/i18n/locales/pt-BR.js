@@ -7,6 +7,8 @@ export default {
     docs: 'Documentação',
     app: 'Análise de Currículo',
     settings: 'Configurações',
+    pipeline: 'Minhas Vagas',
+    master: 'Currículo Mestre',
   },
   wizard: {
     title: 'Pipeline de Otimização',
@@ -52,6 +54,8 @@ export default {
     tips: '💡 Dicas Práticas',
     optimizeBtn: 'Otimizar Currículo com IA',
     optimizeHint: 'A IA vai reescrever seu currículo com base neste diagnóstico',
+    matchGrade: 'Nota Final',
+    missingQuals: 'Qualificações Faltantes (Red Flags)',
   },
   level: {
     badge: 'Otimização',

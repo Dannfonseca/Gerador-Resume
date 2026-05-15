@@ -4,6 +4,8 @@ import { LanguageProvider } from './i18n/LanguageContext';
 import Sidebar from './components/Sidebar';
 import WizardEngine from './components/WizardEngine';
 import DocsView from './components/DocsView';
+import PipelineView from './components/PipelineView';
+import MasterResumeView from './components/MasterResumeView';
 import './App.css';
 
 const queryClient = new QueryClient();
@@ -27,6 +29,10 @@ function AppContent() {
       <main className="main-content">
         {activeTab === 'docs' ? (
           <DocsView onBack={() => setActiveTab('app')} />
+        ) : activeTab === 'pipeline' ? (
+          <PipelineView />
+        ) : activeTab === 'master' ? (
+          <MasterResumeView />
         ) : (
           <WizardEngine currentStep={currentStep} setCurrentStep={setCurrentStep} />
         )}

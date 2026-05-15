@@ -7,6 +7,8 @@ export default {
     docs: 'Documentation',
     app: 'Resume Analysis',
     settings: 'Settings',
+    pipeline: 'My Jobs',
+    master: 'Master Resume',
   },
   wizard: {
     title: 'Optimization Pipeline',
@@ -52,6 +54,8 @@ export default {
     tips: '💡 Practical Tips',
     optimizeBtn: 'Optimize Resume with AI',
     optimizeHint: 'AI will rewrite your resume based on this diagnosis',
+    matchGrade: 'Final Grade',
+    missingQuals: 'Missing Qualifications (Red Flags)',
   },
   level: {
     badge: 'Optimization',

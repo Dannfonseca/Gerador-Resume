@@ -1,4 +1,4 @@
-import { Upload, Search, Sliders, Key, FileText, Check, BookOpen, Settings, LayoutDashboard, Menu, X as CloseIcon } from 'lucide-react';
+import { Upload, Search, Sliders, Key, FileText, Check, BookOpen, Settings, LayoutDashboard, Menu, X as CloseIcon, Briefcase, FileBadge } from 'lucide-react';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import SettingsModal from './SettingsModal';
@@ -62,6 +62,22 @@ export default function Sidebar({ currentStep, activeTab, onSwitchTab, onNavigat
           >
             <LayoutDashboard size={18} />
             <span>{t('nav.app')}</span>
+          </button>
+
+          <button
+            className={`nav-item ${activeTab === 'pipeline' ? 'active' : ''}`}
+            onClick={() => { onSwitchTab('pipeline'); setIsMenuOpen(false); }}
+          >
+            <Briefcase size={18} />
+            <span>{t('nav.pipeline') || 'Minhas Vagas'}</span>
+          </button>
+
+          <button
+            className={`nav-item ${activeTab === 'master' ? 'active' : ''}`}
+            onClick={() => { onSwitchTab('master'); setIsMenuOpen(false); }}
+          >
+            <FileBadge size={18} />
+            <span>{t('nav.master') || 'Currículo Mestre'}</span>
           </button>
         </div>
 

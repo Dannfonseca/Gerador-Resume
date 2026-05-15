@@ -11,8 +11,8 @@ export default function WizardStepAnalysis({ analysis, onOptimize }) {
 
   if (!analysis) return null;
 
-  const { atsScore, probability, screeningReason, matchScore, matchAnalysis,
-    foundKeywords, missingKeywords, strengths, tips } = analysis;
+  const { atsScore, probability, screeningReason, matchScore, matchGrade, matchAnalysis,
+    missingQualifications, foundKeywords, missingKeywords, strengths, tips } = analysis;
 
   const getScoreColor = (score) => {
     if (score >= 85) return '#16a34a';
@@ -25,6 +25,15 @@ export default function WizardStepAnalysis({ analysis, onOptimize }) {
     if (prob === 'Alta' || prob === 'High') return <CheckCircle size={16} color="#16a34a" />;
     if (prob === 'Média' || prob === 'Medium') return <AlertTriangle size={16} color="#ca8a04" />;
     return <AlertTriangle size={16} color="#dc2626" />;
+  };
+
+  const getGradeColor = (grade) => {
+    if (grade === 'A') return '#16a34a';
+    if (grade === 'B') return '#84cc16';
+    if (grade === 'C') return '#eab308';
+    if (grade === 'D') return '#f97316';
+    if (grade === 'F') return '#dc2626';
+    return 'var(--secondary)';
   };
 
   const containerVariants = {
@@ -132,7 +141,24 @@ export default function WizardStepAnalysis({ analysis, onOptimize }) {
               </motion.span>
               <span className="score-label">/100</span>
             </div>
+            
+            {matchGrade && (
+              <div className="score-probability" style={{ marginTop: '12px' }}>
+                <Target size={16} color={getGradeColor(matchGrade)} />
+                <span>{t('analysis.matchGrade')}: <strong style={{color: getGradeColor(matchGrade)}}>{matchGrade}</strong></span>
+              </div>
+            )}
+
             <p className="score-reason">{matchAnalysis}</p>
+
+            {missingQualifications && missingQualifications.length > 0 && (
+              <div className="missing-quals" style={{ marginTop: '12px', background: 'rgba(220, 38, 38, 0.05)', padding: '10px', borderRadius: '8px' }}>
+                <h4 style={{fontSize: '0.85rem', color: '#dc2626', margin: '0 0 6px 0'}}>{t('analysis.missingQuals')}</h4>
+                <ul style={{fontSize: '0.8rem', color: 'var(--text)', paddingLeft: '1.2rem', margin: 0}}>
+                  {missingQualifications.map((q, i) => <li key={i}>{q}</li>)}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </motion.div>

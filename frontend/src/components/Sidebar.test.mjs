@@ -8,7 +8,7 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 const sidebar = readFileSync(join(currentDir, 'Sidebar.jsx'), 'utf8');
 const app = readFileSync(join(currentDir, '..', 'App.jsx'), 'utf8');
 
-test('sidebar only exposes the ATS wizard and app documentation', () => {
+test('sidebar exposes the wizard, docs, master resume, and job pipeline entries', () => {
   for (const removedText of [
     'Modelos Brasileiros',
     'Modelos Gringos',
@@ -24,13 +24,18 @@ test('sidebar only exposes the ATS wizard and app documentation', () => {
   assert.match(sidebar, /SettingsModal/);
   assert.match(sidebar, /nav\.docs/);
   assert.match(sidebar, /nav\.app/);
+  assert.match(sidebar, /nav\.pipeline/);
+  assert.match(sidebar, /nav\.master/);
   assert.match(sidebar, /wizard\.steps/);
 });
 
-test('app renders the wizard directly without article or resume routes', () => {
+test('app renders the wizard directly and mounts the local pipeline pages by tab', () => {
   assert.doesNotMatch(app, /ArticleView/);
-  assert.doesNotMatch(app, /ResumeView/);
+  assert.doesNotMatch(app, /import ResumeView/);
+  assert.doesNotMatch(app, /<ResumeView/);
   assert.doesNotMatch(app, /activeResume/);
   assert.doesNotMatch(app, /activeView/);
   assert.match(app, /<WizardEngine/);
+  assert.match(app, /<PipelineView/);
+  assert.match(app, /<MasterResumeView/);
 });
