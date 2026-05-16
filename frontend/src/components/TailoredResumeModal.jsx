@@ -12,6 +12,7 @@ import {
   setValueAtPath,
 } from '../lib/resumePayload';
 import { useLanguage } from '../i18n/LanguageContext';
+import '../styles/tailored-modal.css';
 
 function getHeaders(extra = {}) {
   const gemini = getApiKey('gemini');
@@ -195,74 +196,89 @@ export default function TailoredResumeModal({
   };
 
   return (
-    <div
-      className="modal-overlay"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1200,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(0,0,0,0.5)',
-      }}
-    >
+    <div className="tailored-modal-overlay">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="modal-content"
-        style={{
-          background: 'var(--bg)',
-          width: 'min(1200px, 96vw)',
-          height: '92vh',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
+        className="tailored-modal-content"
       >
-        <div className="resume-toolbar glass-panel no-print" style={{ margin: 0, borderRadius: 0 }}>
-          <div className="resume-info">
+        <div className="tailored-toolbar no-print">
+          <div className="tailored-info">
             <h3>{resumeVersion.name}</h3>
-            <p>{job.company} - {job.title}</p>
+            <p>{job.company} | {job.title}</p>
+            {resumeVersion.analysis?.matchScore !== undefined && (
+              <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ 
+                  background: 'white', 
+                  color: 'var(--primary)', 
+                  padding: '4px 8px', 
+                  fontSize: '0.7rem', 
+                  fontWeight: 800,
+                  fontFamily: "'Space Grotesk', sans-serif"
+                }}>
+                  {job.analysisData?.matchScore !== undefined && (
+                    <span style={{ opacity: 0.5, textDecoration: 'line-through', marginRight: '6px' }}>{job.analysisData.matchScore}%</span>
+                  )}
+                  <span>{resumeVersion.analysis.matchScore}% MATCH</span>
+                </div>
+                {job.analysisData?.matchScore !== undefined && resumeVersion.analysis.matchScore > job.analysisData.matchScore && (
+                  <span style={{ color: '#4ade80', fontSize: '0.7rem', fontWeight: 700 }}>
+                    ↑ +{resumeVersion.analysis.matchScore - job.analysisData.matchScore}% de ganho ATS
+                  </span>
+                )}
+              </div>
+            )}
           </div>
-          <div className="resume-toolbar-actions result-toolbar-grid">
-            <div className="layout-toggle" role="group">
+
+          <div className="tailored-actions">
+            {/* Group: Layout */}
+            <div className="action-group">
               {Object.entries(RESUME_LAYOUTS).map(([layout, config]) => (
                 <button
                   key={layout}
                   type="button"
-                  className={`layout-toggle-button ${selectedLayout === layout ? 'active' : ''}`}
+                  className={`action-btn ${selectedLayout === layout ? 'active' : ''}`}
                   onClick={() => handleSelectLayout(layout)}
                 >
-                  <LayoutTemplate size={16} /> {config.label}
+                  {config.label}
                 </button>
               ))}
             </div>
-            <button className="btn-secondary" onClick={() => setInteractionMode(interactionMode === 'edit' ? 'none' : 'edit')}>
-              <Edit3 size={16} /> {t('result.editManual')}
-            </button>
-            <button className="btn-secondary" onClick={() => setInteractionMode(interactionMode === 'ai' ? 'none' : 'ai')}>
-              <Sparkles size={16} /> {t('result.editAi')}
-            </button>
-            <button className="btn-secondary" onClick={exportJson}>
-              <Download size={16} /> {t('result.exportJson')}
-            </button>
-            <button className="btn-secondary" onClick={exportWord}>
-              <Download size={16} /> Word
-            </button>
-            {selectedLatex && (
-              <button className="btn-secondary" onClick={copyLatex}>
-                <Code size={16} /> {t('result.copyLatex')}
+
+            {/* Group: Editor */}
+            <div className="action-group">
+              <button 
+                className={`action-btn ${interactionMode === 'edit' ? 'active' : ''}`}
+                onClick={() => setInteractionMode(interactionMode === 'edit' ? 'none' : 'edit')}
+              >
+                <Edit3 size={14} /> {t('result.editManual')}
               </button>
-            )}
-            <button className="btn-primary" onClick={() => window.print()}>
-              <Download size={16} /> {t('result.savePdf')}
-            </button>
-            <button className="btn-secondary" onClick={onClose}>
-              <X size={16} /> Fechar
+              <button 
+                className={`action-btn ${interactionMode === 'ai' ? 'active' : ''}`}
+                onClick={() => setInteractionMode(interactionMode === 'ai' ? 'none' : 'ai')}
+              >
+                <Sparkles size={14} /> {t('result.editAi')}
+              </button>
+            </div>
+
+            {/* Group: Export */}
+            <div className="action-group">
+              <button className="action-btn" onClick={exportJson}>JSON</button>
+              <button className="action-btn" onClick={exportWord}>WORD</button>
+              {selectedLatex && (
+                <button className="action-btn" onClick={copyLatex}>LATEX</button>
+              )}
+            </div>
+
+            <button className="action-btn primary" onClick={() => window.print()}>
+              <Download size={14} /> {t('result.savePdf')}
             </button>
           </div>
         </div>
+
+        <button className="close-btn" onClick={onClose} title="Fechar">
+          <X size={32} />
+        </button>
 
         <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
           <div className="resume-paper-container">

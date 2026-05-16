@@ -23,6 +23,8 @@ test('adds a job with default pipeline fields', () => {
 
   assert.equal(jobs[0].id, 'job-1');
   assert.equal(jobs[0].status, 'A Avaliar');
+  assert.equal(jobs[0].analysisStatus, 'idle');
+  assert.equal(jobs[0].analysisError, null);
   assert.equal(jobs[0].isProcessing, false);
   assert.deepEqual(jobs[0].resumes, []);
 });
@@ -65,11 +67,14 @@ test('resets stale processing jobs after a page reload', () => {
   const jobs = resetStaleProcessingJobs([
     { id: 'job-1', isProcessing: true, processingError: null },
     { id: 'job-2', isProcessing: false, processingError: null },
+    { id: 'job-3', isProcessing: false, analysisStatus: 'analyzing', analysisError: null },
   ]);
 
   assert.equal(jobs[0].isProcessing, false);
   assert.match(jobs[0].processingError, /recarregamento/);
   assert.equal(jobs[1].processingError, null);
+  assert.equal(jobs[2].analysisStatus, 'failed');
+  assert.match(jobs[2].analysisError, /recarregamento/);
 });
 
 test('deletes jobs by id', () => {

@@ -179,6 +179,230 @@ function coerceArrayPayload(payload: any, keys: string[]): any[] {
   throw new Error("Model response did not contain a JSON array");
 }
 
+function getErrorText(error: any): string {
+  if (error?.message) return String(error.message);
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "Erro desconhecido";
+  }
+}
+
+function sanitizeErrorMessage(error: any): string {
+  const raw = getErrorText(error)
+    .replace(/AIza[0-9A-Za-z_-]{20,}/g, "[api-key-redacted]")
+    .replace(/sk-[0-9A-Za-z_-]{20,}/g, "[api-key-redacted]")
+    .replace(/key=[^&\s]+/gi, "key=[api-key-redacted]")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return raw.slice(0, 900) || "Erro desconhecido";
+}
+
+function getAiErrorHint(error: any): string {
+  const text = getErrorText(error).toLowerCase();
+
+  if (text.includes("api key not configured")) {
+    return "Nenhuma chave de API foi enviada para o provedor do modelo selecionado. Abra Configuracoes e salve a chave correta.";
+  }
+  if (text.includes("invalid api key") || text.includes("unauthorized") || text.includes("401") || text.includes("permission denied")) {
+    return "A chave de API parece invalida ou sem permissao. Confira a chave salva e se ela pertence ao provedor do modelo selecionado.";
+  }
+  if (text.includes("quota") || text.includes("rate limit") || text.includes("429") || text.includes("resource_exhausted")) {
+    return "O provedor recusou a requisicao por limite, cota ou rate limit. Aguarde alguns minutos ou selecione outro modelo/provedor.";
+  }
+  if (text.includes("model") && (text.includes("not found") || text.includes("unsupported") || text.includes("not supported"))) {
+    return "O modelo selecionado pode estar indisponivel para sua chave. Escolha outro modelo nas Configuracoes.";
+  }
+  if (text.includes("json") || text.includes("zod") || text.includes("schema") || text.includes("parse")) {
+    return "A IA retornou um formato inesperado. Tente novamente ou use outro modelo mais forte.";
+  }
+  if (text.includes("fetch failed") || text.includes("econn") || text.includes("network") || text.includes("timeout")) {
+    return "Falha de rede ao falar com o provedor de IA. Verifique a conexao e tente novamente.";
+  }
+
+  return "O backend recebeu um erro do provedor de IA. Use o detalhe tecnico acima para ajustar chave, modelo ou tentar novamente.";
+}
+
+function clampNumber(value: any, fallback: number, min: number, max: number): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(max, Math.max(min, numeric));
+}
+
+function toText(value: any, fallback = ""): string {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return fallback;
+}
+
+function toTextArray(value: any): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (typeof item === "object" && item !== null) {
+          return Object.values(item).map((entry) => toText(entry)).filter(Boolean).join(" - ");
+        }
+        return toText(item);
+      })
+      .filter(Boolean);
+  }
+  if (typeof value === "string" && value.trim()) return [value.trim()];
+  return [];
+}
+
+function normalizeProbability(value: any, atsScore: number): "Alta" | "Média" | "Baixa" {
+  const normalized = toText(value)
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+
+  if (normalized.includes("alta") || normalized.includes("high")) return "Alta";
+  if (normalized.includes("media") || normalized.includes("medium")) return "Média";
+  if (normalized.includes("baixa") || normalized.includes("low")) return "Baixa";
+  if (atsScore >= 80) return "Alta";
+  if (atsScore >= 55) return "Média";
+  return "Baixa";
+}
+
+function normalizeMatchGrade(value: any, matchScore: number | null): "A" | "B" | "C" | "D" | "F" | null {
+  const grade = toText(value).trim().toUpperCase();
+  if (["A", "B", "C", "D", "F"].includes(grade)) return grade as "A" | "B" | "C" | "D" | "F";
+  if (matchScore === null) return null;
+  if (matchScore >= 90) return "A";
+  if (matchScore >= 75) return "B";
+  if (matchScore >= 60) return "C";
+  if (matchScore >= 40) return "D";
+  return "F";
+}
+
+function coerceStrengths(value: any): Array<{ title: string; description: string }> {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    if (typeof item === "string") return { title: item, description: "" };
+    return {
+      title: toText(item?.title || item?.name || item?.label, "Ponto forte"),
+      description: toText(item?.description || item?.reason || item?.details)
+    };
+  });
+}
+
+function coerceAnalysisForSchema(payload: any, hasJobDescription: boolean): any {
+  const atsScore = clampNumber(payload?.atsScore, 0, 0, 100);
+  const matchScore = hasJobDescription ? clampNumber(payload?.matchScore, 0, 0, 100) : null;
+  const atsBreakdown = payload?.atsBreakdown && typeof payload.atsBreakdown === "object"
+    ? {
+        parseability: clampNumber(payload.atsBreakdown.parseability, Math.min(60, atsScore), 0, 60),
+        contentQuality: clampNumber(payload.atsBreakdown.contentQuality, Math.max(0, atsScore - 60), 0, 40)
+      }
+    : null;
+
+  return {
+    ...payload,
+    atsScore,
+    atsBreakdown,
+    probability: normalizeProbability(payload?.probability, atsScore),
+    screeningReason: toText(payload?.screeningReason || payload?.scoreReason || payload?.analysis, "Análise concluída."),
+    matchScore,
+    matchGrade: normalizeMatchGrade(payload?.matchGrade, matchScore),
+    matchAnalysis: hasJobDescription
+      ? toText(payload?.matchAnalysis || payload?.jobMatchAnalysis || payload?.analysis, "Análise de match concluída.")
+      : null,
+    missingQualifications: hasJobDescription ? toTextArray(payload?.missingQualifications) : null,
+    foundKeywords: toTextArray(payload?.foundKeywords),
+    missingKeywords: toTextArray(payload?.missingKeywords),
+    strengths: coerceStrengths(payload?.strengths),
+    keywordOps: toTextArray(payload?.keywordOps || payload?.keywordOpportunities),
+    tips: toTextArray(payload?.tips || payload?.recommendations)
+  };
+}
+
+function coerceExperience(value: any, fallback: any = []): any[] {
+  const source = Array.isArray(value) && value.length ? value : (Array.isArray(fallback) ? fallback : []);
+  return source.map((item) => ({
+    role: toText(item?.role || item?.title),
+    company: toText(item?.company || item?.organization),
+    date: toText(item?.date || item?.period),
+    location: toText(item?.location),
+    responsibilities: toTextArray(item?.responsibilities || item?.bullets || item?.achievements)
+  }));
+}
+
+function coerceEducation(value: any, fallback: any = []): any[] {
+  const source = Array.isArray(value) && value.length ? value : (Array.isArray(fallback) ? fallback : []);
+  return source.map((item) => ({
+    degree: toText(item?.degree || item?.course),
+    institution: toText(item?.institution || item?.school),
+    date: toText(item?.date || item?.period),
+    location: toText(item?.location)
+  }));
+}
+
+function coerceSkillsGroup(value: any, fallback: any = []): any[] {
+  const source = Array.isArray(value) && value.length ? value : (Array.isArray(fallback) ? fallback : []);
+  return source.map((item) => ({
+    category: toText(item?.category || item?.name, "Competências"),
+    items: toTextArray(item?.items || item?.skills)
+  }));
+}
+
+function coerceProfessionalResumeForSchema(value: any, fallback: any = {}): any {
+  const source = value || {};
+  const base = fallback || {};
+  return {
+    language: toText(source.language, toText(base.language, "pt-BR")),
+    name: toText(source.name, toText(base.name)),
+    title: toText(source.title, toText(base.title)),
+    email: toText(source.email, toText(base.email)),
+    phone: toText(source.phone, toText(base.phone)),
+    address: toText(source.address, toText(base.address)),
+    summary: toText(source.summary, toText(base.summary)),
+    experience: coerceExperience(source.experience, base.experience),
+    education: coerceEducation(source.education, base.education),
+    skillsGroup: coerceSkillsGroup(source.skillsGroup, base.skillsGroup)
+  };
+}
+
+function coerceLinks(value: any, fallback: any = []): any[] {
+  const source = Array.isArray(value) && value.length ? value : (Array.isArray(fallback) ? fallback : []);
+  return source.map((item) => ({
+    url: toText(item?.url || item?.href),
+    label: toText(item?.label || item?.name || item?.title, "Link")
+  }));
+}
+
+function coerceProjects(value: any, fallback: any = []): any[] {
+  const source = Array.isArray(value) && value.length ? value : (Array.isArray(fallback) ? fallback : []);
+  return source.map((item) => ({
+    name: toText(item?.name || item?.title),
+    description: toText(item?.description || item?.summary),
+    technologies: toText(item?.technologies || item?.tech || (Array.isArray(item?.tools) ? item.tools.join(", ") : "")),
+    url: toText(item?.url)
+  }));
+}
+
+function coerceHeritageResumeForSchema(value: any, fallback: any = {}): any {
+  return {
+    ...coerceProfessionalResumeForSchema(value, fallback),
+    links: coerceLinks(value?.links, fallback?.links),
+    projects: coerceProjects(value?.projects, fallback?.projects)
+  };
+}
+
+function coerceGeneratedResumeForSchema(payload: any, sourceResume: any = {}): any {
+  const professionalRaw = payload?.professional || payload?.traditional || payload || {};
+  const professional = coerceProfessionalResumeForSchema(professionalRaw, sourceResume);
+  const heritageRaw = payload?.heritage || {
+    ...professionalRaw,
+    links: professionalRaw?.links || sourceResume?.links || [],
+    projects: professionalRaw?.projects || sourceResume?.projects || []
+  };
+  const heritage = coerceHeritageResumeForSchema(heritageRaw, { ...sourceResume, ...professional });
+  return { professional, heritage };
+}
+
 async function extractResumeText(resume: File, set: any): Promise<string | null> {
   if (resume && resume.type === "application/pdf") {
     const arrayBuffer = await resume.arrayBuffer();
@@ -409,7 +633,7 @@ const app = new Elysia()
           system: `${ANALYSIS_SYSTEM_PROMPT}\n\n${comboContext}\n\nIDIOMA DA ANALISE: ${body.language || 'Portugues (BR)'}`,
           userText: `CURRICULO:\n${resumeText}\n\nVAGA:\n${jobContext}\n\nReturn only valid JSON.`
         });
-        return { success: true, data: AnalysisResponseSchema.parse(analysis) };
+        return { success: true, data: AnalysisResponseSchema.parse(coerceAnalysisForSchema(analysis, Boolean(jobDescriptionText || hasJobImage))) };
       }
 
       const runGemini = async () => {
@@ -460,7 +684,7 @@ const app = new Elysia()
       else if (isOpenAI) analysis = await runOpenAI();
       else analysis = await runGemini();
 
-      return { success: true, data: AnalysisResponseSchema.parse(analysis) };
+      return { success: true, data: AnalysisResponseSchema.parse(coerceAnalysisForSchema(analysis, Boolean(jobDescriptionText || jobDescriptionFile))) };
     } catch (e: any) { 
       console.error("💥 ERRO CRÍTICO NA ANÁLISE:", e);
       set.status = 500; 
@@ -563,7 +787,7 @@ Return JSON in this exact shape:
         }
       });
 
-      const validated = GeminiResponseSchema.parse(data);
+      const validated = GeminiResponseSchema.parse(coerceGeneratedResumeForSchema(data));
       const latex = {
         professional: formatResumeToLatex(validated.professional as any),
         heritage: formatResumeToLatex(validated.heritage as any)
@@ -631,7 +855,7 @@ ${jobDescriptionText || 'Não fornecida'}`;
       };
 
       const data = isClaude ? await runClaude() : (isOpenAI ? await runOpenAI() : await runGemini());
-      const validated = GeminiResponseSchema.parse(data);
+      const validated = GeminiResponseSchema.parse(coerceGeneratedResumeForSchema(data));
       const latex = { professional: formatResumeToLatex(validated.professional as any), heritage: formatResumeToLatex(validated.heritage as any) };
 
       // Optional Post-analysis
@@ -655,7 +879,7 @@ ${jobDescriptionText || "Não fornecida"}
 
 Retorne APENAS JSON válido.`
         });
-        postAnalysis = AnalysisResponseSchema.parse(analysis);
+        postAnalysis = AnalysisResponseSchema.parse(coerceAnalysisForSchema(analysis, Boolean(jobDescriptionText)));
       } catch (e) { console.error("Post-analysis error:", e); }
 
       return { success: true, data: validated, latex, postAnalysis };
@@ -722,26 +946,32 @@ Retorne APENAS JSON valido no formato:
         keys,
         temperature: 0.2,
         maxTokens: 4096,
-        userText: prompt
+        userText: prompt,
+        geminiSchema: {
+          type: SchemaType.OBJECT,
+          properties: {
+            professional: professionalResumeSchema,
+            heritage: heritageResumeSchema
+          },
+          required: ["professional", "heritage"]
+        }
       });
 
-      const professional = json.professional || json;
-      const heritage = json.heritage || {
-        ...professional,
-        links: professional.links || [],
-        projects: professional.projects || []
-      };
-      const validated = GeminiResponseSchema.parse({ professional, heritage });
+      const validated = GeminiResponseSchema.parse(coerceGeneratedResumeForSchema(json, resume));
       const latex = {
         professional: formatResumeToLatex(validated.professional as any),
         heritage: formatResumeToLatex(validated.heritage as any)
       };
 
       return { success: true, data: validated, latex };
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       set.status = 500;
-      return { error: "Erro ao adaptar currículo." };
+      return {
+        error: "Erro ao adaptar currículo.",
+        details: sanitizeErrorMessage(e),
+        hint: getAiErrorHint(e)
+      };
     }
   }, { body: t.Object({ resume: t.Any(), jobDescription: t.String(), careerCombo: t.Optional(t.String()), language: t.Optional(t.String()), boostedKeywords: t.Optional(t.String()), modelId: t.Optional(t.String()) }) })
 
@@ -807,7 +1037,11 @@ Retorne APENAS um JSON válido no formato:
     } catch (e: any) {
       console.error("Erro na extração:", e);
       set.status = 500;
-      return { error: e.message || "Erro interno ao tentar ler a URL da vaga." };
+      return {
+        error: "Erro interno ao tentar ler a URL da vaga.",
+        details: sanitizeErrorMessage(e),
+        hint: "Se o site bloquear leitura automatica, cole a descricao da vaga manualmente."
+      };
     }
   }, { body: t.Object({ url: t.String(), modelId: t.Optional(t.String()) }) })
 
@@ -838,7 +1072,7 @@ Retorne APENAS um JSON válido no formato solicitado.`;
         userText: prompt
       });
 
-      const parsed = AnalysisResponseSchema.parse(json);
+      const parsed = AnalysisResponseSchema.parse(coerceAnalysisForSchema(json, Boolean(jobDescription)));
       const data = jobDescription ? parsed : {
         ...parsed,
         matchScore: null,
@@ -853,7 +1087,11 @@ Retorne APENAS um JSON válido no formato solicitado.`;
     } catch (e: any) {
       console.error("Erro na análise mestre:", e);
       set.status = 500;
-      return { error: e.message || "Erro interno na análise ATS." };
+      return {
+        error: "Erro interno na análise ATS.",
+        details: sanitizeErrorMessage(e),
+        hint: getAiErrorHint(e)
+      };
     }
   }, { body: t.Object({ resumeJson: t.Any(), jobDescription: t.Optional(t.String()), language: t.Optional(t.String()), modelId: t.Optional(t.String()) }) })
 

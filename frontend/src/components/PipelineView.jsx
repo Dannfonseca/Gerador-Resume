@@ -1,14 +1,16 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   AlertCircle,
   Briefcase,
   Check,
+  CheckCircle,
   ExternalLink,
   Eye,
   Loader2,
   Plus,
   RotateCcw,
+  Sparkles,
   Trash2,
   X,
 } from 'lucide-react';
@@ -17,6 +19,7 @@ import { useJobPipeline } from '../lib/useJobPipeline';
 import { getApiKey, getAiModel } from '../lib/apiKey';
 import { normalizeGeneratedResumes } from '../lib/resumePayload';
 import TailoredResumeModal from './TailoredResumeModal';
+import ConfirmationModal from './ConfirmationModal';
 import '../styles/pipeline.css';
 
 const emptyJobForm = {
@@ -30,6 +33,7 @@ const emptyAddModal = {
   isOpen: false,
   step: 1,
   job: emptyJobForm,
+  jobId: null,
   loadingMsg: '',
   error: '',
 };
@@ -48,6 +52,28 @@ function getHeaders(extra = {}) {
 
 function safeResumeName(company) {
   return (company || 'vaga').replace(/[^\w-]+/g, '_');
+}
+
+async function readJsonResponse(response) {
+  try {
+    return await response.json();
+  } catch {
+    return {
+      error: 'O servidor respondeu em um formato inesperado.',
+      details: 'A resposta nao era JSON valido.',
+    };
+  }
+}
+
+function formatApiError(payload, fallbackMessage, status) {
+  const parts = [
+    payload?.error || fallbackMessage,
+    payload?.details,
+    payload?.hint,
+    status ? `Status HTTP: ${status}` : '',
+  ].filter(Boolean);
+
+  return [...new Set(parts)].join('\n\n');
 }
 
 export default function PipelineView() {
@@ -69,6 +95,14 @@ export default function PipelineView() {
     isOpen: false,
     jobId: null,
     resumeId: null,
+  });
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    type: 'job', // 'job' or 'resume'
+    jobId: null,
+    resumeId: null,
+    title: '',
+    message: '',
   });
 
   const statusOptions = ['A Avaliar', 'Para Aplicar', 'Aplicado', 'Entrevista', 'Rejeitado', 'Oferta'];
@@ -96,25 +130,7 @@ export default function PipelineView() {
     setAddModal({ ...emptyAddModal, job: { ...emptyJobForm } });
   };
 
-  const handleAddStart = async (event) => {
-    event.preventDefault();
-
-    const formJob = addModal.job;
-    if (!formJob.url && (!formJob.company || !formJob.title || !formJob.jdText)) {
-      setAddModal((prev) => ({
-        ...prev,
-        error: 'Forneca um link ou preencha empresa, cargo e descricao manualmente.',
-      }));
-      return;
-    }
-
-    setAddModal((prev) => ({
-      ...prev,
-      step: 2,
-      loadingMsg: 'Extraindo dados e analisando a vaga...',
-      error: '',
-    }));
-
+  const processJobAnalysisBackground = async (jobId, formJob, masterStr) => {
     try {
       const aiModel = getAiModel();
       let jd = formJob.jdText.trim();
@@ -131,9 +147,9 @@ export default function PipelineView() {
           headers: getHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ url: formJob.url, modelId: aiModel }),
         });
-        const extractionData = await extractionResponse.json();
-        if (!extractionData.success) {
-          throw new Error(extractionData.error || 'Nao foi possivel extrair a vaga.');
+        const extractionData = await readJsonResponse(extractionResponse);
+        if (!extractionResponse.ok || !extractionData.success) {
+          throw new Error(formatApiError(extractionData, 'Nao foi possivel extrair a vaga.', extractionResponse.status));
         }
 
         jd = extractionData.description || '';
@@ -145,7 +161,6 @@ export default function PipelineView() {
         throw new Error('A descricao da vaga nao pode ser lida. Cole o texto manualmente.');
       }
 
-      const masterStr = localStorage.getItem('ats_master_resume');
       if (!masterStr) {
         throw new Error('Configure seu Curriculo Mestre antes de adicionar vagas.');
       }
@@ -161,32 +176,105 @@ export default function PipelineView() {
           modelId: aiModel,
         }),
       });
-      const analysisData = await analysisResponse.json();
-      if (!analysisData.success) {
-        throw new Error(analysisData.error || 'Nao foi possivel analisar a vaga.');
+      const analysisData = await readJsonResponse(analysisResponse);
+      if (!analysisResponse.ok || !analysisData.success) {
+        throw new Error(formatApiError(analysisData, 'Nao foi possivel analisar a vaga.', analysisResponse.status));
       }
 
-      const jobId = addJob({
+      updateJob(jobId, {
         company: company || 'Empresa nao identificada',
         title: title || 'Cargo nao identificado',
         url: formJob.url,
         jdRaw: jd,
         analysisData: analysisData.data,
-        keywordSelection: [],
-        isProcessing: false,
-        processingError: null,
+        analysisStatus: 'ready',
+        analysisError: null,
       });
 
-      closeAddModal();
-      setJobDetailModal({ isOpen: true, jobId });
-      setKeywordFlow({ isOpen: true, jobId, selectedKeywords: [] });
+      setAddModal((prev) => (
+        prev.jobId === jobId
+          ? { ...prev, step: 3, loadingMsg: 'Analise pronta.', error: '' }
+          : prev
+      ));
     } catch (error) {
+      updateJob(jobId, {
+        company: formJob.company.trim() || 'Empresa nao identificada',
+        title: formJob.title.trim() || 'Cargo nao identificado',
+        url: formJob.url,
+        jdRaw: formJob.jdText.trim(),
+        analysisStatus: 'failed',
+        analysisError: error.message || 'Erro ao analisar vaga.',
+      });
+
+      setAddModal((prev) => (
+        prev.jobId === jobId
+          ? {
+              ...prev,
+              step: 1,
+              error: error.message || 'Erro ao adicionar vaga.',
+            }
+          : prev
+      ));
+    }
+  };
+
+  const handleAddStart = (event) => {
+    event.preventDefault();
+
+    const formJob = {
+      company: addModal.job.company.trim(),
+      title: addModal.job.title.trim(),
+      url: addModal.job.url.trim(),
+      jdText: addModal.job.jdText.trim(),
+    };
+
+    if (!formJob.url && (!formJob.company || !formJob.title || !formJob.jdText)) {
       setAddModal((prev) => ({
         ...prev,
-        step: 1,
-        error: error.message || 'Erro ao adicionar vaga.',
+        error: 'Forneca um link ou preencha empresa, cargo e descricao manualmente.',
       }));
+      return;
     }
+
+    if (!formJob.jdText && formJob.url.includes('linkedin.com')) {
+      setAddModal((prev) => ({
+        ...prev,
+        error: 'LinkedIn costuma bloquear extracao. Cole a descricao manualmente.',
+      }));
+      return;
+    }
+
+    const masterStr = localStorage.getItem('ats_master_resume');
+    if (!masterStr) {
+      setAddModal((prev) => ({
+        ...prev,
+        error: 'Configure seu Curriculo Mestre antes de adicionar vagas.',
+      }));
+      return;
+    }
+
+    const jobId = addJob({
+      company: formJob.company || 'Analisando empresa',
+      title: formJob.title || 'Vaga em analise',
+      url: formJob.url,
+      jdRaw: formJob.jdText,
+      analysisData: null,
+      analysisStatus: 'analyzing',
+      analysisError: null,
+      keywordSelection: [],
+      isProcessing: false,
+      processingError: null,
+    });
+
+    setAddModal((prev) => ({
+      ...prev,
+      step: 2,
+      jobId,
+      loadingMsg: formJob.jdText ? 'Analisando match e keywords...' : 'Extraindo dados e analisando a vaga...',
+      error: '',
+    }));
+
+    processJobAnalysisBackground(jobId, formJob, masterStr);
   };
 
   const processTailoringBackground = async (jobId, jd, masterStr, boostedKeywords) => {
@@ -204,9 +292,9 @@ export default function PipelineView() {
           modelId: aiModel,
         }),
       });
-      const tailorData = await tailorResponse.json();
-      if (!tailorData.success) {
-        throw new Error(tailorData.error || 'Nao foi possivel adaptar o curriculo.');
+      const tailorData = await readJsonResponse(tailorResponse);
+      if (!tailorResponse.ok || !tailorData.success) {
+        throw new Error(formatApiError(tailorData, 'Nao foi possivel adaptar o curriculo.', tailorResponse.status));
       }
 
       const normalizedData = normalizeGeneratedResumes(tailorData.data);
@@ -220,7 +308,7 @@ export default function PipelineView() {
           modelId: aiModel,
         }),
       });
-      const analysisData = await analysisResponse.json();
+      const analysisData = await readJsonResponse(analysisResponse);
       const currentJob = jobs.find((job) => job.id === jobId);
       const versionNumber = (currentJob?.resumes?.length || 0) + 1;
 
@@ -283,9 +371,39 @@ export default function PipelineView() {
     updateJob(id, { status: newStatus });
   };
 
-  const deleteJobWithoutOpening = (event, jobId) => {
+  const requestDeleteJob = (event, job) => {
     event.stopPropagation();
-    deleteJob(jobId);
+    const hasResumes = job.resumes && job.resumes.length > 0;
+    setDeleteModal({
+      isOpen: true,
+      type: 'job',
+      jobId: job.id,
+      title: 'Excluir Vaga',
+      message: hasResumes 
+        ? `Esta vaga contém ${job.resumes.length} currículo(s) adaptado(s). Ao excluir a vaga, todos eles serão removidos permanentemente.`
+        : 'Tem certeza que deseja remover esta vaga da sua lista?',
+    });
+  };
+
+  const requestDeleteResume = (event, jobId, resumeId) => {
+    event.stopPropagation();
+    setDeleteModal({
+      isOpen: true,
+      type: 'resume',
+      jobId,
+      resumeId,
+      title: 'Excluir Versão',
+      message: 'Tem certeza que deseja excluir esta versão do currículo? Esta ação não pode ser desfeita.',
+    });
+  };
+
+  const confirmDelete = () => {
+    if (deleteModal.type === 'job') {
+      deleteJob(deleteModal.jobId);
+    } else {
+      deleteResumeFromJob(deleteModal.jobId, deleteModal.resumeId);
+    }
+    setDeleteModal({ ...deleteModal, isOpen: false });
   };
 
   const openKeywordFlow = (job) => {
@@ -294,6 +412,22 @@ export default function PipelineView() {
       jobId: job.id,
       selectedKeywords: job.keywordSelection || [],
     });
+  };
+
+  const getJobAnalysisStatus = (job) => job.analysisStatus || (job.analysisData ? 'ready' : 'idle');
+
+  const [isJdExpanded, setIsJdExpanded] = useState(false);
+
+  const openJobAnalysis = (job) => {
+    setJobDetailModal({ isOpen: true, jobId: job.id });
+    // If no resumes yet, expand JD by default
+    setIsJdExpanded(!job.resumes || job.resumes.length === 0);
+    
+    if (getJobAnalysisStatus(job) === 'ready' && (!job.resumes || job.resumes.length === 0)) {
+      setKeywordFlow({ isOpen: true, jobId: job.id, selectedKeywords: job.keywordSelection || [] });
+    } else {
+      setKeywordFlow({ isOpen: false, jobId: null, selectedKeywords: [] });
+    }
   };
 
   const openResumeVersion = (jobId, resumeId) => {
@@ -424,46 +558,77 @@ export default function PipelineView() {
               </tr>
             </thead>
             <tbody>
-              {jobs.map((job) => (
-                <tr
-                  key={job.id}
-                  onClick={() => setJobDetailModal({ isOpen: true, jobId: job.id })}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <td>
-                    <div style={{ fontWeight: 600, fontSize: '1rem' }}>{job.company}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      {job.title}
-                      {job.url && <ExternalLink size={12} />}
-                    </div>
-                  </td>
-                  <td onClick={(event) => event.stopPropagation()}>
-                    <select
-                      value={job.status}
-                      onChange={(event) => handleStatusChange(job.id, event.target.value)}
-                      className={`status-select status-${job.status.replace(/\s+/g, '-').toLowerCase()}`}
-                    >
-                      {statusOptions.map((option) => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{ background: 'var(--bg)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600 }}>
-                        {job.resumes?.length || 0} versoes
+              {jobs.map((job) => {
+                const analysisStatus = getJobAnalysisStatus(job);
+                return (
+                  <tr
+                    key={job.id}
+                    onClick={() => setJobDetailModal({ isOpen: true, jobId: job.id })}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <td className={`status-${job.status.replace(/\s+/g, '-').toLowerCase()}`}>
+                      <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--primary)', marginBottom: '4px' }}>{job.company}</div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                        {job.title}
+                        {job.url && <ExternalLink size={14} style={{ opacity: 0.6 }} />}
                       </div>
-                      {job.isProcessing && <Loader2 size={14} className="spin" style={{ color: 'var(--primary)' }} />}
-                      {job.processingError && <AlertCircle size={14} style={{ color: 'var(--error)' }} />}
-                    </div>
-                  </td>
-                  <td onClick={(event) => event.stopPropagation()}>
-                    <button className="icon-btn delete" onClick={(event) => deleteJobWithoutOpening(event, job.id)} title="Excluir Vaga">
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td onClick={(event) => event.stopPropagation()}>
+                      <select
+                        value={job.status}
+                        onChange={(event) => handleStatusChange(job.id, event.target.value)}
+                        className="status-select"
+                      >
+                        {statusOptions.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ 
+                          background: 'var(--neutral)', 
+                          padding: '6px 14px', 
+                          border: '1px solid var(--border-light)',
+                          fontSize: '0.75rem', 
+                          fontWeight: 800,
+                          fontFamily: "'Space Grotesk', sans-serif"
+                        }}>
+                          {job.resumes?.length || 0} VERSÕES
+                        </div>
+                        {analysisStatus === 'analyzing' && <Loader2 size={16} className="spin" style={{ color: 'var(--secondary)' }} />}
+                        {job.isProcessing && <Loader2 size={16} className="spin" style={{ color: 'var(--tertiary)' }} />}
+                      </div>
+                    </td>
+                    <td onClick={(event) => event.stopPropagation()}>
+                      <div className="pipeline-actions">
+                        {analysisStatus === 'analyzing' && (
+                          <span className="pipeline-status-pill analyzing">
+                            <Loader2 size={13} className="spin" /> Analisando
+                          </span>
+                        )}
+                        {analysisStatus === 'ready' && (
+                          <button
+                            type="button"
+                            className="pipeline-ready-button"
+                            onClick={() => openJobAnalysis(job)}
+                          >
+                            <Sparkles size={15} /> Abrir analise
+                          </button>
+                        )}
+                        {analysisStatus === 'failed' && (
+                          <span className="pipeline-status-pill failed" title={job.analysisError || 'Falha na analise'}>
+                            <AlertCircle size={13} /> Falhou
+                          </span>
+                        )}
+                        <button className="icon-btn delete" onClick={(event) => requestDeleteJob(event, job)} title="Excluir Vaga">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -548,11 +713,45 @@ export default function PipelineView() {
             )}
 
             {addModal.step === 2 && (
-              <div style={{ padding: '3rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ padding: '3rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
                 <Loader2 size={48} className="spin" style={{ color: 'var(--tertiary)', marginBottom: '1.5rem' }} />
                 <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", textTransform: 'uppercase', letterSpacing: '1px', fontSize: '1rem' }}>
                   {addModal.loadingMsg}
                 </h3>
+                <p style={{ maxWidth: '420px', color: 'var(--secondary)', fontSize: '0.85rem', lineHeight: 1.5, margin: '12px 0 24px' }}>
+                  A analise continua nesta aba. Voce pode fechar este modal e cadastrar outras vagas enquanto ela termina.
+                </p>
+                <button type="button" className="btn-secondary" onClick={closeAddModal} style={{ width: 'auto' }}>
+                  Fechar e continuar
+                </button>
+              </div>
+            )}
+
+            {addModal.step === 3 && (
+              <div style={{ padding: '3rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                <CheckCircle size={48} style={{ color: '#16a34a', marginBottom: '1.5rem' }} />
+                <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", textTransform: 'uppercase', letterSpacing: '1px', fontSize: '1rem' }}>
+                  Analise pronta
+                </h3>
+                <p style={{ maxWidth: '420px', color: 'var(--secondary)', fontSize: '0.85rem', lineHeight: 1.5, margin: '12px 0 24px' }}>
+                  A vaga ja esta na lista. Abra para revisar match, keywords e gerar o curriculo adaptado.
+                </p>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button type="button" className="btn-secondary" onClick={closeAddModal} style={{ width: 'auto' }}>
+                    Fechar
+                  </button>
+                  <button
+                    type="button"
+                    className="pipeline-ready-button"
+                    onClick={() => {
+                      const job = jobs.find((item) => item.id === addModal.jobId);
+                      if (job) openJobAnalysis(job);
+                      closeAddModal();
+                    }}
+                  >
+                    <CheckCircle size={15} /> Abrir analise
+                  </button>
+                </div>
               </div>
             )}
           </motion.div>
@@ -560,152 +759,236 @@ export default function PipelineView() {
       )}
 
       {jobDetailModal.isOpen && selectedJob && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 900 }}>
+        <div className="modal-overlay">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="modal-content glass-panel"
-            style={{ width: '100%', maxWidth: '1100px', height: '85vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}
+            className="modal-standard"
+            style={{ width: '100%', maxWidth: '1100px', height: '85vh', overflow: 'hidden' }}
           >
-            <div style={{ padding: '32px 40px', background: 'var(--neutral)', borderBottom: '1px solid var(--primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <div className="badge" style={{ marginBottom: '8px' }}>Detalhes da Oportunidade</div>
-                <h2 style={{ margin: 0, fontFamily: "'Public Sans', sans-serif", fontSize: '2rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '-1px' }}>
-                  {selectedJob.title}
-                </h2>
-                <p style={{ margin: '4px 0 0 0', color: 'var(--tertiary)', fontWeight: 700, fontSize: '1.1rem', fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {selectedJob.company}
-                </p>
+            <div className="modal-standard-header">
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <h2 className="modal-title" style={{ fontSize: '1.25rem' }}>{selectedJob.title}</h2>
+                  <div style={{ height: '16px', width: '2px', background: 'var(--border-light)' }} />
+                  <p style={{ margin: 0, color: 'var(--tertiary)', fontWeight: 800, fontSize: '0.8rem', fontFamily: "'Space Grotesk', sans-serif", textTransform: 'uppercase' }}>
+                    {selectedJob.company}
+                  </p>
+                </div>
               </div>
-              <button className="btn-secondary" onClick={() => setJobDetailModal({ isOpen: false, jobId: null })} style={{ padding: '12px' }}>
-                <X size={24} />
+              <button 
+                className="icon-btn-red" 
+                onClick={() => setJobDetailModal({ isOpen: false, jobId: null })}
+                style={{ borderRadius: '4px' }}
+              >
+                <X size={18} />
               </button>
             </div>
 
             <div style={{ flex: 1, overflow: 'hidden', display: 'flex', background: 'white' }}>
-              <div style={{ flex: '1.25', borderRight: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <div style={{ padding: '16px 32px', background: 'var(--neutral)', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h4 className="wizard-title" style={{ margin: 0 }}>Descricao da Vaga</h4>
-                  {selectedJob.url && (
-                    <a href={selectedJob.url} target="_blank" rel="noreferrer" className="doc-link" title="Ver Link Original" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
-                      <ExternalLink size={14} /> Link
-                    </a>
+              {/* Left Column: Job Description (Collapsible) */}
+              <motion.div 
+                animate={{ width: isJdExpanded ? '55%' : '50px' }}
+                style={{ 
+                  borderRight: '1px solid var(--border-light)', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  overflow: 'hidden',
+                  background: isJdExpanded ? 'white' : 'var(--neutral)',
+                }}
+              >
+                <div style={{ 
+                  padding: isJdExpanded ? '12px 24px' : '16px 0', 
+                  background: 'var(--neutral)', 
+                  borderBottom: '1px solid var(--border-light)', 
+                  display: 'flex', 
+                  flexDirection: isJdExpanded ? 'row' : 'column',
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  minHeight: '50px'
+                }}>
+                  {isJdExpanded ? (
+                    <>
+                      <h4 className="wizard-title" style={{ margin: 0, fontSize: '0.75rem' }}>DESCRICAO</h4>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button className="icon-btn" onClick={() => setIsJdExpanded(false)} title="Recolher" style={{ padding: '4px' }}>
+                          <Eye size={16} />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <button className="icon-btn" onClick={() => setIsJdExpanded(true)} title="Ver Descricao" style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px' }}>
+                      <Eye size={18} />
+                    </button>
                   )}
                 </div>
-                <div style={{ flex: 1, overflow: 'auto', padding: '32px', fontSize: '1rem', color: 'var(--primary)', whiteSpace: 'pre-wrap', lineHeight: '1.7', fontFamily: "'Public Sans', sans-serif" }}>
-                  {selectedJob.jdRaw}
-                </div>
-              </div>
+                {isJdExpanded && (
+                  <div className="modal-standard-body" style={{ padding: '32px', overflowY: 'auto' }}>
+                    <div style={{ fontSize: 'var(--font-body)', color: 'var(--primary)', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                      {selectedJob.jdRaw}
+                    </div>
+                  </div>
+                )}
+              </motion.div>
 
-              <div style={{ flex: '1', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--neutral)' }}>
-                <div style={{ padding: '16px 32px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h4 className="wizard-title" style={{ margin: 0 }}>Versoes do Curriculo</h4>
-                  <button
-                    className="btn-primary"
-                    style={{ padding: '8px 16px', fontSize: '0.75rem', width: 'auto' }}
-                    onClick={() => openKeywordFlow(selectedJob)}
-                    disabled={selectedJob.isProcessing}
-                  >
-                    <Plus size={14} style={{ marginRight: '4px' }} /> Adaptar Nova
-                  </button>
+              {/* Right Column: Versions & Keywords */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--neutral)' }}>
+                <div style={{ padding: '16px 32px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '50px' }}>
+                  <h4 className="wizard-title" style={{ margin: 0, fontSize: '0.75rem' }}>{keywordFlow.isOpen ? 'ADAPTACAO IA' : 'VERSOES'}</h4>
+                  {!keywordFlow.isOpen && (
+                    <button
+                      className="btn-primary"
+                      style={{ padding: '8px 16px', fontSize: '0.7rem' }}
+                      onClick={() => openKeywordFlow(selectedJob)}
+                      disabled={selectedJob.isProcessing || getJobAnalysisStatus(selectedJob) !== 'ready'}
+                    >
+                      <Plus size={14} style={{ marginRight: '4px' }} /> ADAPTAR NOVA
+                    </button>
+                  )}
                 </div>
 
-                <div style={{ flex: 1, overflow: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="modal-standard-body" style={{ background: 'var(--neutral)', padding: '24px' }}>
                   {keywordFlow.isOpen && keywordFlow.jobId === selectedJob.id && renderKeywordFlow(selectedJob)}
 
-                  {selectedJob.isProcessing && (
-                    <div className="doc-card" style={{ padding: '20px', borderStyle: 'dashed', background: 'white', display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                      <Loader2 size={22} className="spin" style={{ color: 'var(--tertiary)', flexShrink: 0 }} />
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--primary)', textTransform: 'uppercase' }}>
-                          Gerando nova versao...
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--secondary)', lineHeight: 1.5, marginTop: '4px' }}>
-                          Voce pode fechar este modal enquanto esta aba continuar aberta. Ao abrir a vaga de novo, o loading continua aqui.
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedJob.processingError && (
-                    <div className="doc-card" style={{ padding: '20px', borderColor: 'var(--error)', background: 'white' }}>
-                      <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', color: 'var(--error)', marginBottom: '14px' }}>
-                        <AlertCircle size={20} />
-                        <div>
-                          <div style={{ fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase' }}>Erro na geracao</div>
-                          <p style={{ margin: '6px 0 0', fontSize: '0.8rem', lineHeight: 1.5 }}>{selectedJob.processingError}</p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        style={{ width: 'auto' }}
-                        onClick={() => openKeywordFlow(selectedJob)}
-                      >
-                        <RotateCcw size={15} /> Tentar novamente
-                      </button>
-                    </div>
-                  )}
-
-                  {(!selectedJob.resumes || selectedJob.resumes.length === 0) && !selectedJob.isProcessing && !keywordFlow.isOpen && (
-                    <div className="doc-card" style={{ textAlign: 'center', padding: '48px 24px', background: 'white' }}>
-                      <Briefcase size={40} style={{ margin: '0 auto 16px', color: 'var(--border-light)' }} />
-                      <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, color: 'var(--secondary)' }}>
-                        Confirme as keywords para gerar a primeira versao adaptada desta vaga.
-                      </p>
-                    </div>
-                  )}
-
-                  {(selectedJob.resumes || []).map((resume) => (
-                    <div key={resume.id} className="doc-card" style={{ padding: '20px', transition: 'transform 0.2s ease' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--primary)', marginBottom: '4px' }}>
-                            {resume.name}
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--secondary)', fontFamily: "'Space Grotesk', sans-serif" }}>
-                            Gerado em {new Date(resume.dateCreated).toLocaleDateString()}
+                  {!keywordFlow.isOpen && (
+                    <>
+                      {getJobAnalysisStatus(selectedJob) === 'analyzing' && (
+                        <div className="doc-card" style={{ padding: '20px', borderStyle: 'dashed', background: 'white', display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                          <Loader2 size={22} className="spin" style={{ color: 'var(--tertiary)', flexShrink: 0 }} />
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--primary)', textTransform: 'uppercase' }}>
+                              Analisando vaga...
+                            </div>
                           </div>
                         </div>
-                        {resume.analysis?.matchScore !== undefined && (
-                          <div style={{ background: 'var(--primary)', color: 'white', padding: '4px 10px', fontSize: '0.75rem', fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif" }}>
-                            {resume.analysis.matchScore}% MATCH
-                          </div>
-                        )}
-                      </div>
+                      )}
 
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '16px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
-                        <button
-                          className="btn-secondary"
-                          style={{ flex: 1, padding: '8px', fontSize: '0.7rem' }}
-                          onClick={() => openResumeVersion(selectedJob.id, resume.id)}
+                      {selectedJob.isProcessing && (
+                        <div className="doc-card" style={{ padding: '20px', borderStyle: 'dashed', background: 'white', display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                          <Loader2 size={22} className="spin" style={{ color: 'var(--tertiary)', flexShrink: 0 }} />
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--primary)', textTransform: 'uppercase' }}>
+                              Gerando nova versao...
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedJob.processingError && (
+                        <div className="doc-card" style={{ padding: '20px', borderColor: 'var(--error)', background: 'white' }}>
+                          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', color: 'var(--error)', marginBottom: '14px' }}>
+                            <AlertCircle size={20} />
+                            <div>
+                              <div style={{ fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase' }}>Erro na geracao</div>
+                              <p style={{ margin: '6px 0 0', fontSize: '0.8rem', lineHeight: 1.5 }}>{selectedJob.processingError}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {(!selectedJob.resumes || selectedJob.resumes.length === 0) && !selectedJob.isProcessing && !keywordFlow.isOpen && getJobAnalysisStatus(selectedJob) === 'ready' && (
+                        <div className="doc-card" style={{ textAlign: 'center', padding: '48px 24px', background: 'white' }}>
+                          <Briefcase size={40} style={{ margin: '0 auto 16px', color: 'var(--border-light)' }} />
+                          <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, color: 'var(--secondary)', fontSize: '0.9rem' }}>
+                            Confirme as keywords para gerar a primeira versao adaptada desta vaga.
+                          </p>
+                        </div>
+                      )}
+
+                      {(selectedJob.resumes || []).map((resume) => (
+                        <div 
+                          key={resume.id} 
+                          style={{ 
+                            padding: '12px 16px', 
+                            display: 'flex', 
+                            flexWrap: 'wrap',
+                            alignItems: 'center', 
+                            background: 'white',
+                            border: '1px solid var(--border-light)',
+                            gap: '12px',
+                            justifyContent: 'space-between'
+                          }}
                         >
-                          <Eye size={14} style={{ marginRight: '6px' }} /> VISUALIZAR
-                        </button>
-                        <button
-                          className="btn-secondary"
-                          style={{ padding: '8px' }}
-                          onClick={() => exportJson(resume.data, selectedJob.company)}
-                          title="Baixar JSON"
-                        >
-                          JSON
-                        </button>
-                        <button
-                          className="btn-secondary delete"
-                          style={{ padding: '8px', borderColor: 'transparent', color: 'var(--tertiary)' }}
-                          onClick={() => deleteResumeFromJob(selectedJob.id, resume.id)}
-                          title="Excluir"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                          {/* Info Column */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 auto', minWidth: '200px' }}>
+                            <span style={{ fontWeight: 900, fontSize: '0.8rem', color: 'var(--primary)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                              {resume.name}
+                            </span>
+                            <span style={{ fontSize: '0.6rem', color: 'var(--secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                              {new Date(resume.dateCreated).toLocaleDateString()}
+                            </span>
+                            
+                            {resume.analysis?.matchScore !== undefined && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', borderLeft: '1px solid var(--border-light)', paddingLeft: '8px' }}>
+                                <div style={{ 
+                                  background: 'var(--primary)', 
+                                  color: 'white', 
+                                  padding: '2px 6px', 
+                                  fontSize: '0.6rem', 
+                                  fontWeight: 800, 
+                                  fontFamily: "'Space Grotesk', sans-serif",
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}>
+                                  {selectedJob.analysisData?.matchScore !== undefined && (
+                                    <span style={{ opacity: 0.5, textDecoration: 'line-through', fontSize: '0.5rem' }}>{selectedJob.analysisData.matchScore}%</span>
+                                  )}
+                                  <span>{resume.analysis.matchScore}%</span>
+                                </div>
+                                {selectedJob.analysisData?.matchScore !== undefined && resume.analysis.matchScore > selectedJob.analysisData.matchScore && (
+                                  <span style={{ color: '#16a34a', fontSize: '0.6rem', fontWeight: 800 }}>
+                                    +{resume.analysis.matchScore - selectedJob.analysisData.matchScore}%
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Actions Column */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                            <button 
+                              className="btn-primary" 
+                              style={{ padding: '6px 10px', fontSize: '0.65rem', width: 'auto' }} 
+                              onClick={() => openResumeVersion(selectedJob.id, resume.id)}
+                            >
+                              VISUALIZAR
+                            </button>
+                            <button 
+                              className="btn-secondary" 
+                              style={{ padding: '6px 8px', fontSize: '0.6rem', width: 'auto' }} 
+                              onClick={() => exportJson(resume.data, selectedJob.company)}
+                            >
+                              JSON
+                            </button>
+                            <button 
+                              className="icon-btn delete" 
+                              style={{ padding: '4px', color: 'var(--secondary)', display: 'flex' }} 
+                              onClick={(event) => requestDeleteResume(event, selectedJob.id, resume.id)}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
           </motion.div>
         </div>
+      )}
+
+      {deleteModal.isOpen && (
+        <ConfirmationModal
+          isOpen={deleteModal.isOpen}
+          title={deleteModal.title}
+          message={deleteModal.message}
+          confirmText="Sim, Excluir"
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteModal({ ...deleteModal, isOpen: false })}
+        />
       )}
 
       {selectedResumeModal.isOpen && selectedResumeJob && selectedResumeVersion && (

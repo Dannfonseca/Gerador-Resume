@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { FileText, Edit2, Check, X, Shield, Loader2, AlertTriangle, Save, Upload, Settings, Eye, RefreshCw, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -42,10 +42,6 @@ export default function MasterResumeView() {
   const [refineInstruction, setRefineInstruction] = useState('');
   const [isRefining, setIsRefining] = useState(false);
 
-  useEffect(() => {
-    loadResume();
-  }, []);
-
   const getHeaders = (extra = {}) => {
     const gemini = getApiKey('gemini');
     const openai = getApiKey('openai');
@@ -62,22 +58,6 @@ export default function MasterResumeView() {
     localStorage.setItem('ats_master_resume', JSON.stringify(nextResume));
     setResume(nextResume);
     setEditJson(JSON.stringify(nextResume, null, 2));
-  };
-
-  const loadResume = () => {
-    const saved = localStorage.getItem('ats_master_resume');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setResume(parsed);
-        setEditJson(JSON.stringify(parsed, null, 2));
-        setIsCreatingMaster(false);
-      } catch {
-        console.error('Invalid stored resume');
-      }
-    } else {
-      setIsCreatingMaster(true);
-    }
   };
 
   const handleSave = () => {

@@ -38,3 +38,28 @@ test('tailor resume returns latex artifacts for saved job versions', () => {
   assert.match(tailorBlock, /formatResumeToLatex/);
   assert.match(tailorBlock, /latex/);
 });
+
+test('tailor resume constrains and normalizes generated resume JSON before validation', () => {
+  const tailorBlock = backendSource.match(/\.post\("\/api\/tailor-resume"[\s\S]*?\}, \{ body:/)?.[0] || '';
+  assert.match(tailorBlock, /geminiSchema:\s*\{/);
+  assert.match(tailorBlock, /professionalResumeSchema/);
+  assert.match(tailorBlock, /heritageResumeSchema/);
+  assert.match(tailorBlock, /coerceGeneratedResumeForSchema\(json,\s*resume\)/);
+});
+
+test('analysis endpoints coerce model output and expose useful error details', () => {
+  const analyzeMasterBlock = backendSource.match(/\.post\("\/api\/analyze-master"[\s\S]*?\}, \{ body:/)?.[0] || '';
+  const tailorBlock = backendSource.match(/\.post\("\/api\/tailor-resume"[\s\S]*?\}, \{ body:/)?.[0] || '';
+
+  assert.match(backendSource, /function coerceAnalysisForSchema/);
+  assert.match(analyzeMasterBlock, /coerceAnalysisForSchema\(json,\s*Boolean\(jobDescription\)\)/);
+  assert.match(tailorBlock, /details:\s*sanitizeErrorMessage\(e\)/);
+});
+
+test('backend sanitizes and classifies ai errors before returning them to the client', () => {
+  const tailorBlock = backendSource.match(/\.post\("\/api\/tailor-resume"[\s\S]*?\}, \{ body:/)?.[0] || '';
+  assert.match(backendSource, /function sanitizeErrorMessage/);
+  assert.match(backendSource, /function getAiErrorHint/);
+  assert.match(tailorBlock, /details:\s*sanitizeErrorMessage\(e\)/);
+  assert.match(tailorBlock, /hint:\s*getAiErrorHint\(e\)/);
+});

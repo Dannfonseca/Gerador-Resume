@@ -1,6 +1,6 @@
 .pipeline-container {
-  padding: 2rem;
-  max-width: 1000px;
+  padding: 40px 20px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
@@ -8,103 +8,171 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 48px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid var(--primary);
 }
 
 .pipeline-title-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   color: var(--primary);
 }
 
 .pipeline-title-row h2 {
-  font-size: 1.8rem;
-  font-weight: 700;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 2.2rem;
+  font-weight: 800;
   margin: 0;
+  letter-spacing: -1px;
+  text-transform: uppercase;
 }
 
-.add-job-form {
+.jobs-list {
   display: flex;
-  gap: 10px;
-  margin-bottom: 2rem;
-  background: var(--surface);
-  padding: 1.5rem;
-  border-radius: 12px;
-  border: 1px solid var(--border-light);
-  flex-wrap: wrap;
-}
-
-.add-job-form input {
-  flex: 1;
-  min-width: 200px;
-  padding: 10px 14px;
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  background: var(--bg);
-  color: var(--text);
+  flex-direction: column;
+  gap: 24px;
 }
 
 .jobs-table {
   width: 100%;
-  border-collapse: collapse;
-  background: var(--surface);
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-}
-
-.jobs-table th, .jobs-table td {
-  padding: 1rem;
-  text-align: left;
-  border-bottom: 1px solid var(--border-light);
+  border-collapse: separate;
+  border-spacing: 0 16px;
 }
 
 .jobs-table th {
-  background: var(--surface-hover);
-  font-weight: 600;
+  padding: 0 24px 8px;
+  text-align: left;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
   color: var(--secondary);
+  border: none;
 }
 
-.job-title-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.jobs-table tr td {
+  padding: 24px;
+  background: white;
+  border: 1px solid var(--border-light);
+  box-shadow: 8px 8px 0px rgba(26, 28, 30, 0.05);
+  transition: all 0.2s ease;
 }
 
-.job-title-cell a {
-  color: var(--primary);
-  display: inline-flex;
+.jobs-table tr:hover td {
+  border-color: var(--primary);
+  box-shadow: 12px 12px 0px rgba(26, 28, 30, 0.08);
+  transform: translate(-2px, -2px);
+}
+
+.jobs-table tr td:first-child {
+  border-right: none;
+}
+
+.jobs-table tr td:last-child {
+  border-left: none;
 }
 
 .status-select {
-  padding: 6px 12px;
-  border-radius: 20px;
-  border: 1px solid var(--border-light);
-  background: var(--surface);
-  color: var(--text);
-  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 0;
+  border: 1px solid var(--primary);
+  background: white;
+  color: var(--primary);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
   cursor: pointer;
   outline: none;
+  transition: all 0.2s ease;
 }
 
-.status-a-avaliar { background: #f1f5f9; color: #475569; }
-.status-para-aplicar { background: #dbeafe; color: #1e40af; }
-.status-aplicado { background: #fef3c7; color: #92400e; }
-.status-entrevista { background: #e0e7ff; color: #3730a3; }
-.status-oferta { background: #dcfce7; color: #166534; }
-.status-rejeitado { background: #fee2e2; color: #991b1b; }
+.status-select:hover {
+  background: var(--neutral);
+}
+
+.status-a-avaliar { border-left: 4px solid #94a3b8; }
+.status-para-aplicar { border-left: 4px solid #3b82f6; }
+.status-aplicado { border-left: 4px solid #f59e0b; }
+.status-entrevista { border-left: 4px solid #6366f1; }
+.status-oferta { border-left: 4px solid #10b981; }
+.status-rejeitado { border-left: 4px solid #ef4444; }
+
+.pipeline-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.pipeline-ready-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--tertiary);
+  background: white;
+  color: var(--tertiary);
+  padding: 8px 16px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pipeline-ready-button:hover {
+  background: var(--tertiary);
+  color: white;
+}
+
+.pipeline-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pipeline-status-pill.analyzing {
+  color: #3b82f6;
+  border: 1px solid #3b82f6;
+}
+
+.pipeline-status-pill.failed {
+  color: var(--tertiary);
+  border: 1px solid var(--tertiary);
+}
 
 .icon-btn.delete {
+  color: var(--secondary);
   background: transparent;
-  border: none;
-  color: var(--error);
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
+  border: 1px solid transparent;
+  padding: 8px;
+  transition: all 0.2s ease;
 }
+
 .icon-btn.delete:hover {
-  background: rgba(239, 68, 68, 0.1);
+  color: var(--tertiary);
+  background: rgba(184, 66, 46, 0.05);
+  border-color: var(--tertiary);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 80px 40px;
+  background: white;
+  border: 1px dashed var(--border-light);
+  color: var(--secondary);
+  font-family: 'Space Grotesk', sans-serif;
 }
 
 @keyframes spin {
@@ -113,5 +181,6 @@
 }
 
 .spin {
-  animation: spin 1s linear infinite;
+  animation: spin 1.2s linear infinite;
 }
+

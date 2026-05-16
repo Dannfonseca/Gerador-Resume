@@ -1,6 +1,7 @@
 export const JOB_PIPELINE_STORAGE_KEY = 'ats_job_pipeline';
 
 const interruptedMessage = 'Geracao interrompida por recarregamento da pagina. Abra a vaga e tente novamente.';
+const interruptedAnalysisMessage = 'Analise da vaga interrompida por recarregamento da pagina. Tente registrar a vaga novamente.';
 
 function createId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -16,6 +17,7 @@ function createNow() {
 export function createJob(job, options = {}) {
   const id = options.id || createId();
   const now = options.now || createNow();
+  const analysisStatus = job.analysisStatus || (job.analysisData ? 'ready' : 'idle');
 
   return {
     id,
@@ -24,6 +26,8 @@ export function createJob(job, options = {}) {
     url: '',
     jdRaw: '',
     analysisData: null,
+    analysisStatus,
+    analysisError: null,
     keywordSelection: [],
     isProcessing: false,
     processingError: null,
@@ -93,11 +97,19 @@ export function deleteResumeFromJobList(jobs, jobId, resumeId) {
 
 export function resetStaleProcessingJobs(jobs) {
   return jobs.map((job) => {
-    if (!job.isProcessing) return job;
+    const nextJob = job.analysisStatus === 'analyzing'
+      ? {
+          ...job,
+          analysisStatus: 'failed',
+          analysisError: job.analysisError || interruptedAnalysisMessage,
+        }
+      : job;
+
+    if (!nextJob.isProcessing) return nextJob;
     return {
-      ...job,
+      ...nextJob,
       isProcessing: false,
-      processingError: job.processingError || interruptedMessage,
+      processingError: nextJob.processingError || interruptedMessage,
     };
   });
 }
